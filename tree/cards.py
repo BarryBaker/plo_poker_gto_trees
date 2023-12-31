@@ -1,28 +1,92 @@
 import numpy as np
+import pandas as pd
 from itertools import combinations
 
 
-from .static import card_values, suit_values
+from .static import (
+    card_values,
+    suit_values,
+    card_values_inv,
+    suit_values_inv,
+)
 from icecream import ic as qw
 
 
 class Cards:
+    def __init__(self, a: pd.DataFrame) -> None:
+        self.cards = np.array(
+            [
+                [
+                    [card_values[c[i]], suit_values[c[i + 1]]]
+                    for i in range(0, 8, 2)
+                ]
+                for c in a.index
+            ]
+        )
+        # qw(range_)
+        # sorting_indices = np.lexsort(
+        #     (
+        #         range_[:, 3, 0],
+        #         range_[:, 2, 0],
+        #         range_[:, 1, 0],
+        #         range_[:, 0, 0],
+        #     ),
+        #     axis=0,
+        # )
+        # # qw((range_[:, 0, 0], range_[:, 1, 0], range_[:, 2, 0]))
+        # self.range_ = range_[sorting_indices[::-1]]
+
+    @property
+    def ranks(self):
+        return self.cards[:, :, 0]
+
+    @property
+    def suits(self):
+        return self.cards[:, :, 1]
+
+    @property
+    def empty(self):
+        return np.full(self.cards.shape[0], False)
+
+    def __repr__(self):
+        rows = 6
+        if self.cards.shape[0] > 10:
+            return "\n".join(
+                [
+                    f"| {' '.join([card_values_inv[i[0]]+suit_values_inv[i[1]] for i in cards])} |"
+                    for cards in np.vstack(
+                        [self.cards[:rows], self.cards[-rows:]]
+                    )
+                ]
+            )
+        return "\n".join(
+            [
+                f"| {' '.join([card_values_inv[i[0]]+suit_values_inv[i[1]] for i in cards])} |"
+                for cards in self.cards
+            ]
+        )
+
+
+class Board:
     def __init__(self, cards) -> None:
         if type(cards) is str:
-            self.cards = [
-                (card_values[cards[i]], suit_values[cards[i + 1]])
-                for i in range(0, len(cards), 2)
-            ]
-        if type(cards) is list:
+            self.cards = np.array(
+                [
+                    [card_values[cards[i]], suit_values[cards[i + 1]]]
+                    for i in range(0, len(cards), 2)
+                ]
+            )
+
+        else:
             self.cards = cards
 
     @property
     def ranks(self):
-        return np.array([i[0] for i in self.cards])
+        return self.cards[:, 0]
 
     @property
     def suits(self):
-        return np.array([i[1] for i in self.cards])
+        return self.cards[:, 1]
 
     @property
     def uranks(self):
@@ -32,25 +96,17 @@ class Cards:
     def usuits(self):
         return np.unique(self.suits, return_counts=True)
 
-
-class Board(Cards):
-    # def __init__(self):
-    #     super().__init__()
-
     @property
-    def cards_turn(self):
+    def turn(self):
         return self.cards[:4]
 
     @property
     def usuits_turn(self):
-        return np.unique(
-            np.array([i[1] for i in self.cards_turn]), return_counts=True
-        )
+        return np.unique(self.cards[:4][:, 1], return_counts=True)
 
     @property
-    def paired_map(self):
-        unique, count = self.uranks
-        return count
+    def uranks_turn(self):
+        return np.unique(self.cards[:4][:, 0], return_counts=True)
 
     @property
     def flush(self):
@@ -64,6 +120,14 @@ class Board(Cards):
             return np.array([])
 
         return unique[count == 2]
+
+    @property
+    def bdfd(self):
+        if len(self.cards) > 3:
+            return np.array([])
+        unique, count = self.usuits
+
+        return unique[count == 1]
 
     @property
     def str8(self):
@@ -107,6 +171,7 @@ class Board(Cards):
         ranks = self.uranks[0]
 
         no_wheel = str8_wheel(ranks)
+
         if 14 in ranks:
             ranks = np.array([i if i != 14 else 1 for i in ranks])
         wheel = str8_wheel(ranks)
@@ -127,7 +192,10 @@ class Board(Cards):
 
     @property
     def str8_draw(self):
-        ranks = self.uranks[0]
+        if len(self.cards) == 5:
+            return []
+
+        ranks = self.uranks_turn[0]
 
         str8s = self.str8
         str8_cards = [(i[0], i[1]) for i in str8s]
@@ -135,7 +203,8 @@ class Board(Cards):
         str_draws = []
         for next in range(2, 15):
             if next not in ranks:
-                next_board = Board(self.cards + [(next, 0)])
+                next_board = Board(np.vstack([self.cards, [next, 0]]))
+
                 for ns in next_board.str8:
                     to_append = tuple(list(ns) + [next])
 
@@ -150,17 +219,56 @@ class Board(Cards):
 
                         if ns[2] < matched[2]:
                             str_draws.append(to_append)
+        str_draws = sorted(str_draws, key=lambda x: 10 * x[0] + x[1])
+        str8_cards = list(set([j for i in str_draws for j in i[:2]]))
 
-        return str_draws
+        result = {}  # 0:wrap,1wrap1...5:gs1
+        for n in [2, 3, 4]:
+            for cardc in combinations(str8_cards, n):
+                str8s = [
+                    i
+                    for i in str_draws
+                    if any(
+                        [
+                            j[0] == i[0] and j[1] == i[1]
+                            for j in combinations(cardc, 2)
+                        ]
+                    )
+                ]
+
+                makes_the_str8_with = [(i[2], i[3]) for i in str8s]
+                all_str8_cards = list(set([i[3] for i in str8s]))
+                makes_high_str8_with = [
+                    min([j[0] for j in makes_the_str8_with if j[1] == i])
+                    for i in all_str8_cards
+                ]
+                outs = len(makes_high_str8_with)
+                if outs > 0:
+                    nut = max(makes_high_str8_with) == 0
+                    result[cardc] = (outs, nut)
+        # qw(result)
+        return result
 
     @property
     def sdbl(self):
         str8 = [(i[0], i[1]) for i in self.str8 if i[2] == 0]
         str8 = [i for j in str8 for i in j]
-        sd = np.array([(i[0], i[1]) for i in self.str8_draw if i[2] == 0])
+        sd = np.array(
+            [
+                (i[0], i[1])
+                for i in self.str8_draw
+                if self.str8_draw[i][0] == 2
+                and self.str8_draw[i][1]
+                and len(i) == 2
+            ]
+        )
+        # sd, count = np.unique(sd, return_counts=True, axis=0)
 
-        sd, count = np.unique(sd, return_counts=True, axis=0)
-        return list(set([i for i in sd[count == 2].flatten()] + str8))
+        return list(sd.flatten()) + str8
+
+    @property
+    def remaining_ranks(self):
+        return [i for i in card_values_inv if i not in self.uranks[0]]
 
     def __repr__(self):
-        return f"|| {' '.join(list(card_values.keys())[list(card_values.values()).index(i[0])]+list(suit_values.keys())[list(suit_values.values()).index(i[1])] for i in self.cards)} ||"
+        return f"| {' '.join([card_values_inv[i[0]]+suit_values_inv[i[1]] for i in self.cards])} |"

@@ -17,3 +17,14 @@ card_values = {
 }
 
 suit_values = {"s": 3, "h": 2, "d": 1, "c": 0}
+
+card_values_inv = {v: k for k, v in card_values.items()}
+suit_values_inv = {v: k for k, v in suit_values.items()}
+
+
+def actions_order(action):
+    if action == "F":
+        return 0
+    if action == "C":
+        return 1
+    return int(action[1:])

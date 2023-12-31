@@ -4,20 +4,249 @@ from icecream import ic as qw
 from itertools import combinations
 
 from ..cards import Board, Cards
-from ..static import card_values, suit_values
+from ..static import card_values_inv, suit_values
+from .utils import f1, f2, f1_card
 
 
-def fd(hole: Cards, board: Board):
+def bdfd(cards: Cards, board: Board):
+    suits = cards.suits
+    bdfd = board.bdfd
+
+    if len(bdfd) == 0:
+        return cards.empty
+
+    return np.any(
+        [f2(suits, suit) for suit in bdfd],
+        axis=0,
+    )
+
+
+def bdfd_2(cards: Cards, board: Board):
+    suits = cards.suits
+    bdfd = board.bdfd
+
+    if len(bdfd) < 2:
+        return cards.empty
+
+    return np.any(
+        [
+            np.all([f2(suits, s) for s in suit], axis=0)
+            for suit in combinations(bdfd, 2)
+        ],
+        axis=0,
+    )
+
+
+def fd(cards: Cards, board: Board):
+    suits = cards.suits
     fd = board.fd
+
     if len(fd) == 0:
-        return False
+        return cards.empty
 
-    fd_ranks = [i[0] for i in board.cards if i[1] == fd[0]]
-    rest_ranks = [i for i in card_values.values() if i not in fd_ranks]
+    return np.any(
+        [f2(suits, card) for card in fd],
+        axis=0,
+    )
 
-    suits, count = hole.usuits
 
-    if fd[0] not in suits:
-        return False
+def fd_h(level):
+    def fld(cards: Cards, board: Board):
+        suits = cards.suits
+        fd = board.fd
 
-    return count[suits == fd[0]][0] >= 2
+        if len(fd) == 0:
+            return cards.empty
+
+        remaining = {
+            suit: [
+                c
+                for c in card_values_inv
+                if c not in board.cards[board.cards[:, 1] == suit][:, 0]
+            ]
+            for suit in fd
+        }
+
+        return np.any(
+            [
+                np.all(
+                    [
+                        np.any(
+                            [
+                                f1_card(
+                                    cards.cards, (remaining[suit][0], suit)
+                                ),
+                                f1_card(
+                                    cards.cards, (remaining[suit][1], suit)
+                                ),
+                            ][:level],
+                            axis=0,
+                        ),
+                        f2(suits, suit),
+                    ],
+                    axis=0,
+                )
+                for suit in fd
+            ],
+            axis=0,
+        )
+
+    return fld
+
+
+def flush(cards: Cards, board: Board):
+    suits = cards.suits
+    flush = board.flush
+
+    if len(flush) == 0:
+        return cards.empty
+
+    return f2(suits, flush[0])
+
+
+def flush_h(level):
+    def fl(cards: Cards, board: Board):
+        suits = cards.suits
+        flush = board.flush
+
+        if len(flush) == 0:
+            return cards.empty
+        remaining = [
+            c
+            for c in card_values_inv
+            if c not in board.cards[board.cards[:, 1] == flush[0]][:, 0]
+        ]
+
+        return np.all(
+            [
+                np.any(
+                    [
+                        f1_card(cards.cards, (remaining[0], flush[0])),
+                        f1_card(cards.cards, (remaining[1], flush[0])),
+                        f1_card(cards.cards, (remaining[2], flush[0])),
+                        f1_card(cards.cards, (remaining[3], flush[0])),
+                    ][:level],
+                    axis=0,
+                ),
+                f2(suits, flush[0]),
+            ],
+            axis=0,
+        )
+
+    return fl
+
+
+def fb(cards: Cards, board: Board):
+    suits = cards.suits
+
+    fb = []
+    if len(board.flush) > 0:
+        fb = board.flush
+
+    if len(board.fd) > 0:
+        fb = board.fd
+
+    if len(fb) == 0:
+        return cards.empty
+
+    return np.any(
+        [
+            np.all([f1(suits, suit), ~f2(suits, suit)], axis=0)
+            for suit in fb
+        ],
+        axis=0,
+    )
+
+
+def fb_h(level):
+    def flb(cards: Cards, board: Board):
+        suits = cards.suits
+
+        fb = []
+        if len(board.flush) > 0:
+            fb = board.flush
+
+        if len(board.fd) > 0:
+            fb = board.fd
+
+        if len(fb) == 0:
+            return cards.empty
+
+        remaining = {
+            suit: [
+                c
+                for c in card_values_inv
+                if c not in board.cards[board.cards[:, 1] == suit][:, 0]
+            ]
+            for suit in fb
+        }
+        return np.any(
+            [
+                np.any(
+                    [
+                        np.all(
+                            [
+                                f1_card(
+                                    cards.cards, (remaining[suit][0], suit)
+                                ),
+                                ~f2(suits, suit),
+                            ],
+                            axis=0,
+                        ),
+                        np.all(
+                            [
+                                f1_card(
+                                    cards.cards, (remaining[suit][1], suit)
+                                ),
+                                ~f2(suits, suit),
+                            ],
+                            axis=0,
+                        ),
+                        np.all(
+                            [
+                                f1_card(
+                                    cards.cards, (remaining[suit][2], suit)
+                                ),
+                                ~f2(suits, suit),
+                            ],
+                            axis=0,
+                        ),
+                        np.all(
+                            [
+                                f1_card(
+                                    cards.cards, (remaining[suit][3], suit)
+                                ),
+                                ~f2(suits, suit),
+                            ],
+                            axis=0,
+                        ),
+                    ][:level],
+                    axis=0,
+                )
+                for suit in fb
+            ],
+            axis=0,
+        )
+
+    return flb
+
+
+fn = [
+    fd,
+    flush,
+    bdfd,
+    bdfd_2,
+    fb,
+]
+fn = {f.__name__: f for f in fn}
+fn["flush_1"] = flush_h(1)
+fn["flush_2"] = flush_h(2)
+fn["flush_h"] = flush_h(4)
+
+fn["fd_1"] = fd_h(1)
+fn["fd_2"] = fd_h(2)
+# fn["fd_h"] = fd_h(4)
+
+fn["fb_1"] = fb_h(1)
+fn["fb_2"] = fb_h(2)
+fn["fb_h"] = fb_h(4)

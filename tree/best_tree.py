@@ -9,12 +9,6 @@ from collections import Counter
 from functools import reduce
 import json
 
-with open("a.obj", "rb") as f:
-    strat = pickle.load(f)
-
-actions = ["C", "R50"]
-# strat["best_action"] = strat[actions].idxmax(axis=1)
-# tree_action = strat[actions].idxmax(axis=1)
 
 max_score = strat.apply(
     lambda row: sorted([row[i] for i in actions])[-2]
@@ -23,6 +17,9 @@ max_score = strat.apply(
 ).sum()
 
 hand_count = strat.shape[0]
+
+strat["aaaa"] = strat[actions].idxmax(axis=1)
+qw(strat)
 
 init_action = strat[actions].idxmax(axis=1).value_counts().idxmax()
 strat["action"] = init_action
