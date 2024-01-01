@@ -22,7 +22,7 @@ def quads(cards: Cards, board: Board):
             axis=0,
         )
     triple = unique[counts > 2][0]
-    return f1(ranks, triple[0])
+    return f1(ranks, triple)
 
 
 def full(cards: Cards, board: Board):
@@ -272,21 +272,21 @@ def bop(cards: Cards, board: Board):
     )
 
 
-fn = [
-    quads,
-    full,
-    trips,
-    trips_1,
-    trips_top,
-    twop,
-    twop_1,
-    tp,
-    mp,
-    lp,
-    bop,
-    op,
-    rr,
-    lrr,
-    hrr,
-]
-fn = {f.__name__: f for f in fn}
+fn = {
+    "Q": quads,
+    "FULL": full,
+    "TRIPS": trips,
+    "TRIPS1": trips_1,
+    "TRIPST": trips_top,
+    "2P": twop,
+    "2PT": twop_1,
+    "TP": tp,
+    "MP": mp,
+    "LP": lp,
+    "BOP": bop,
+    "OP": op,
+    "RR": rr,
+    "LRR": lrr,
+    "HRR": hrr,
+}
+# fn = {f.__name__: f for f in fn}

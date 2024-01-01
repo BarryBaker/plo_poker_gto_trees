@@ -231,22 +231,22 @@ def fb_h(level):
     return flb
 
 
-fn = [
-    fd,
-    flush,
-    bdfd,
-    bdfd_2,
-    fb,
-]
-fn = {f.__name__: f for f in fn}
-fn["flush_1"] = flush_h(1)
-fn["flush_2"] = flush_h(2)
-fn["flush_h"] = flush_h(4)
+fn = {
+    "FD": fd,
+    "F": flush,
+    "BDFD": bdfd,
+    "BDFD2": bdfd_2,
+    "FB": fb,
+}
+# fn = {f.__name__: f for f in fn}
+fn["NF"] = flush_h(1)
+fn["NF2"] = flush_h(2)
+fn["HF"] = flush_h(4)
 
-fn["fd_1"] = fd_h(1)
-fn["fd_2"] = fd_h(2)
+fn["NFD"] = fd_h(1)
+fn["NFD2"] = fd_h(2)
 # fn["fd_h"] = fd_h(4)
 
-fn["fb_1"] = fb_h(1)
-fn["fb_2"] = fb_h(2)
-fn["fb_h"] = fb_h(4)
+fn["NFD"] = fb_h(1)
+fn["NFD2"] = fb_h(2)
+fn["HFD"] = fb_h(4)

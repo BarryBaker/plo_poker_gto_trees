@@ -1,33 +1,15 @@
 import numpy as np
 import pandas as pd
+import pickle
+import glob
+import os
+from icecream import ic as qw
 
-# print(np.any([[1, 0], [1, 0], [0, 1], [0, 0]], axis=0))
 
-a = np.array(
-    [
-        [[1, 2], [1, 2], [1, 2]],
-        [[1, 3], [1, 4], [1, 2]],
-        [[1, 2], [1, 5], [1, 2]],
-        [[1, 2], [1, 6], [2, 2]],
-    ]
-)
-# print(np.any(a == 1, axis=(2)) & np.any(a == 2, axis=(2)))
+file = "/Users/barrybaker/Documents/blackcard2/blackcard2_back/app/saved/100_MP_BB_SRP_Th5h5d_C.obj"
 
-print(
-    pd.DataFrame(
-        {
-            "a": [
-                False,
-                False,
-                False,
-                False,
-            ],
-            "b": [
-                False,
-                False,
-                False,
-                False,
-            ],
-        }
-    )
-)
+
+with open(file, "rb") as f:
+    a = pickle.load(f)
+
+qw(a)
