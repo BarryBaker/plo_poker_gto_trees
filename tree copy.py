@@ -19,19 +19,18 @@ gto_path = "/Users/barrybaker/Documents/fromAHK/objs3/"
 
 situation = {
     "stack": "100",
-    "poss": ["BTN", "SB"],
-    "pot": "3BP",
+    "poss": ["BTN", "BB"],
+    "pot": "SRP",
 }
-lines = ["C-C"]
-# lines = ["C-C-C", "C-R75-C-C", "C-R50-C-C", "C-R33-C-C",'C-C-R75','C-C-R100']
+lines = ["C-R75-C-C-R100"]
 
 situation["poss"] = "_".join(situation["poss"])
 
-all_boards = get_boards()
+all_boards = get_boards(situation)
 
 
 """----------------"""
-num_chunks = 9
+num_chunks = 1
 avg_chunk_size = len(all_boards) // num_chunks
 remainder = len(all_boards) % num_chunks
 
@@ -42,7 +41,7 @@ for i in range(num_chunks):
     chunks.append(all_boards[start:end])
     start = end
 """----------------"""
-min_loss_decrease = 1
+min_loss_decrease = 0.2
 
 
 def main(boards: list):
@@ -79,10 +78,7 @@ def main(boards: list):
             )
             strat["action"] = init_action
 
-            # qw(
-            #     board,
-            #     strat.iloc[:, list(range(7)) + [-3, -2, -1]].sample(20),
-            # )
+            qw(board, strat.iloc[:, :7].sample(20))
             # init_score = round(
             #     strat.apply(
             #         lambda row: sorted(
@@ -141,57 +137,46 @@ def main(boards: list):
                 )
                 # qw(max_score)
 
-                current_action = np.unique(a["action"])
-                if len(current_action) > 1:
-                    raise Exception(
-                        "Multiple action options in iterate step"
-                    )
-                current_action = current_action[0]
-                other_actions = [j for j in actions if j != current_action]
+                a["loss"] = a.apply(
+                    lambda row: sorted(
+                        [row[i] for i in actions if i != row["action"]]
+                    )[-1]
+                    - row[row["action"]],
+                    axis=1,
+                )
 
-                for i in other_actions:
-                    a[f"{i}_loss"] = a.apply(
-                        lambda row: row[i] - row[current_action],
-                        axis=1,
-                    )
+                loss = sum(a.loss)  # / a.shape[0]
 
-                # loss = sum(a.loss)  # / a.shape[0]
+                # print("\n\n")
+                # qw(hand_before)
+                # qw(a)
 
-                # if loss == max_score_filtered:
-                #     return
+                if loss == max_score_filtered:
+                    return
 
                 result = []
                 hands = [
                     i
                     for i in a.columns
-                    if i
-                    not in [*actions, "action", "loss", "best_action"]
-                    + [f"{j}_loss" for j in actions]
+                    if i not in [*actions, "action", "loss", "best_action"]
                 ]
                 for hand in hands:
                     for tf in [0, 1]:
                         filtered = a[a[hand] == tf]
 
                         if filtered.shape[0] > 0:
-                            for action in other_actions:
-                                result.append(
-                                    (
-                                        hand,
-                                        tf,
-                                        sum(
-                                            a[f"{action}_loss"][
-                                                a[hand] == tf
-                                            ]
-                                        ),
-                                        action,
-                                    )  # / a.shape[0])
-                                )
+                            result.append(
+                                (
+                                    hand,
+                                    tf,
+                                    sum(a["loss"][a[hand] == tf]),
+                                )  # / a.shape[0])
+                            )
 
                 if len(result) == 0:
                     return
                 result = sorted(result, key=lambda x: x[2], reverse=True)
-                # qw(result[:10])
-
+                # qw(result[:5])
                 best_cut = result[0]
                 loss_decrease = -round(
                     2 * best_cut[2] / max_score * 100, 3
@@ -209,8 +194,7 @@ def main(boards: list):
 
                     a.loc[a[best_cut[0]] == best_cut[1], "action"] = a[
                         "action"
-                    ].apply(lambda x: best_cut[3])
-
+                    ].apply(lambda x: [i for i in actions if i != x][0])
                     if len(hand_before) > 0:
                         strat.loc[
                             (strat[best_cut[0]] == best_cut[1])
@@ -218,11 +202,15 @@ def main(boards: list):
                                 [strat[i[0]] == i[1] for i in hand_before]
                             ).all(axis=0),
                             "action",
-                        ] = strat["action"].apply(lambda x: best_cut[3])
+                        ] = strat["action"].apply(
+                            lambda x: [i for i in actions if i != x][0]
+                        )
                     else:
                         strat.loc[
                             strat[best_cut[0]] == best_cut[1], "action"
-                        ] = strat["action"].apply(lambda x: best_cut[3])
+                        ] = strat["action"].apply(
+                            lambda x: [i for i in actions if i != x][0]
+                        )
 
                     step(
                         a[a[best_cut[0]]],
@@ -245,27 +233,21 @@ def main(boards: list):
                             ]
 
                             if filtered.shape[0] > 0:
-                                for action in other_actions:
-                                    loss = sum(filtered[f"{action}_loss"])
-                                    if (
-                                        -round(
-                                            2 * loss / max_score * 100, 3
-                                        )
-                                        > min_loss_decrease
-                                    ):
-                                        result.append(
-                                            (hand, tf, loss, action)
-                                        )
+                                loss = sum(filtered["loss"])
+                                if loss > 0:
+                                    result.append(
+                                        (hand, tf, loss)
+                                    )  # / a.shape[0])
 
                     result = sorted(
                         result, key=lambda x: x[2], reverse=True
                     )
-                    # result = [
-                    #     i
-                    #     for i in result
-                    #     if round(2 * i[2] / (loss - max_score) * 100, 3)
-                    #     > 1
-                    # ]
+                    result = [
+                        i
+                        for i in result
+                        if round(2 * i[2] / (loss - max_score) * 100, 3)
+                        > 1
+                    ]
                     if len(result) == 0:
                         return
                         """--------------------------------"""
@@ -344,11 +326,11 @@ def main(boards: list):
                         )
                         """--------------------------------"""
                     best_cut = result[0]
-                    # loss_decrease = -round(
-                    #     2 * best_cut[2] / max_score * 100, 3
-                    # )
-                    # if loss_decrease < min_loss_decrease:
-                    #     return
+                    loss_decrease = round(
+                        2 * best_cut[2] / (loss - max_score) * 100, 2
+                    )
+                    if loss_decrease < min_loss_decrease:
+                        return
                     # qw(result)
                     # qw(loss_decrease)
                     most_common = Counter(
@@ -447,7 +429,7 @@ def main(boards: list):
             #             print_tree(tree[key], indent + 1)
             if len(tree) > 0:
                 get_freqs(tree, strat)
-            # print(tree)
+            # qw(tree)
 
             base_action = get_result(strat)
 
@@ -503,15 +485,15 @@ def main(boards: list):
 
             filename = f"/Users/barrybaker/Documents/blackcard2/blackcard2_back/app/saved/{'_'.join(list(situation.values()))}_{board}_{line}.obj"
 
-            with open(filename, "wb") as f:
-                pickle.dump(final_tree, f)
+            # with open(filename, "wb") as f:
+            #     pickle.dump(final_tree, f)
 
 
 if __name__ == "__main__":
     processes = []
     if len(chunks) <= 9:
         for i in chunks:
-            process = multiprocessing.Process(target=main, args=(i,))
+            process = multiprocessing.Process(target=main, args=(i[:27],))
             process.start()
             processes.append(process)
 

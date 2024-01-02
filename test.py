@@ -17,23 +17,23 @@ from tree.omaha.flush import fn as flush
 r = Cards(
     pd.DataFrame(
         index=[
-            "AcTc9d6h",
-            "KsKcJh2c",
-            "Ts9h9c2c",
-            "Kh6c5h4s",
+            "AdQsQdJs",
+            "KdKcJh2c",
+            "TsQh9d2d",
+            "Kc6d5d4d",
         ]
     )
 )
 # qw(r)
-b = Board("KhTc4c")
+b = Board("AsTd9d7d")
 
 # str8s = b.str8
 str8_draws = b.str8_draw
 str8_sdbl = b.sdbl
 # qw(f1_card(r.range_, (14, 3)))
-qw(str8_sdbl)
+# qw(b.fd)
 qw(r, "", b)
-qw(flush["fd"](r, b))
+qw(flush["HFLB"](r, b))
 # qw(outs, nut)
 # qw("wrap", outs > 2)
 # qw("wrap1", (outs > 2) & nut)

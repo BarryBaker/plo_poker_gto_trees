@@ -77,6 +77,7 @@ class Board:
                 ]
             )
 
+            self.string_cards = cards
         else:
             self.cards = cards
 

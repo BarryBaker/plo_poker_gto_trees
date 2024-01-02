@@ -17,42 +17,46 @@ from tree.omaha.ranks import exact_cards
 gto_path = "/Users/barrybaker/Documents/fromAHK/objs3/"
 
 
-def get_boards(situation):
-    files = glob.glob(
-        os.path.join(
-            gto_path, f"{'_'.join(list(situation.values()))}*.obj"
+def get_boards(situation=""):
+    if situation == "":
+        files = glob.glob(f"{gto_path}*.obj")
+    else:
+        files = glob.glob(
+            os.path.join(
+                gto_path, f"{'_'.join(list(situation.values()))}*.obj"
+            )
         )
-    )
 
-    files = [
-        f.replace("_".join(list(situation.values())), "")
-        .replace(".obj", "")
-        .replace(gto_path, "")
-        .replace("_", "")
+    boards = [
+        Board(
+            f.replace("_".join(list(situation.values())), "")
+            .replace(".obj", "")
+            .replace(gto_path, "")
+            .replace("_", "")
+        )
         for f in files
     ]
-    return [
-        f
-        for f in files
-        if len(f) == 6 and len(list(set([f[0], f[2], f[3]]))) == 3
-    ]
+
+    return [f for f in boards if len(f.cards) == 4]
 
 
-def load_strat(situation, board, line):
-    # qw(situation, board, line)
+def load_strat(situation, board: Board, line):
     file = glob.glob(
         os.path.join(
             gto_path,
-            f"{'_'.join(list(situation.values()))}_{board}.obj",
+            f"{'_'.join(list(situation.values()))}_{board.string_cards}.obj",
         )
     )[0]
     # qw(file)
     with open(file, "rb") as f:
-        a = pickle.load(f)[line]
-
+        a = pickle.load(f)
+    if line not in a:
+        return "NOLINE"
+    a = a[line]
+    # qw(a)
     actions = sorted(list(a.columns), key=actions_order)
     cards = Cards(a)
-    board = Board(board)
+    # board = Board(board)
     # qw(board)
 
     # start = time()
@@ -60,8 +64,25 @@ def load_strat(situation, board, line):
     for f in flush:
         a[f] = flush[f](cards, board)
 
-    for f in made:
-        a[f] = made[f](cards, board)
+    # for f in made:
+    #     a[f] = made[f](cards, board)
+
+    a["Q"] = made["Q"](cards, board)
+    a["FULL"] = made["FULL"](cards, board) & ~a["Q"]
+    a["FULL1"] = made["FULL1"](cards, board) & ~a["Q"]
+    a["TRIPS"] = made["TRIPS"](cards, board) & ~a["Q"]
+    a["TRIPS1"] = made["TRIPS1"](cards, board) & ~a["Q"]
+    a["TRIPST"] = made["TRIPST"](cards, board) & ~a["Q"]
+    a["2P"] = made["2P"](cards, board) & ~a["TRIPS"]
+    a["2PT"] = made["2PT"](cards, board)
+    a["TP"] = made["TP"](cards, board)
+    a["MP"] = made["MP"](cards, board)
+    a["LP"] = made["LP"](cards, board)
+    a["BOP"] = made["BOP"](cards, board)
+    a["OP"] = made["OP"](cards, board)
+    a["RR"] = made["RR"](cards, board)
+    a["LRR"] = made["LRR"](cards, board)
+    a["HRR"] = made["HRR"](cards, board)
 
     str8s = board.str8
     str8_draws = board.str8_draw
@@ -79,10 +100,24 @@ def load_strat(situation, board, line):
 
         a["WR"] = str8["sd"](cards, str8_draws, 0)
         a["WR1"] = str8["sd"](cards, str8_draws, 1)
-        a["OESD"] = str8["sd"](cards, str8_draws, 2)
-        a["OESD1"] = str8["sd"](cards, str8_draws, 3)
-        a["GS"] = str8["sd"](cards, str8_draws, 4)
-        a["GS1"] = str8["sd"](cards, str8_draws, 5)
+        a["OESD"] = str8["sd"](cards, str8_draws, 2) & ~a["WR"] & ~a["WR1"]
+        a["OESD1"] = (
+            str8["sd"](cards, str8_draws, 3) & ~a["WR"] & ~a["WR1"]
+        )
+        a["GS"] = (
+            str8["sd"](cards, str8_draws, 4)
+            & ~a["WR"]
+            & ~a["WR1"]
+            & ~a["OESD"]
+            & ~a["OESD1"]
+        )
+        a["GS1"] = (
+            str8["sd"](cards, str8_draws, 5)
+            & ~a["WR"]
+            & ~a["WR1"]
+            & ~a["OESD"]
+            & ~a["OESD1"]
+        )
 
     # for i in range(2, 15):
     #     a[str(card_values_inv[i])] = exact_cards(cards, i)
@@ -100,5 +135,5 @@ def load_strat(situation, board, line):
         inplace=True,
     )
     # qw(time() - start)
-    # qw((a.sample(20)))
+
     return a, actions

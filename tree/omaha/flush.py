@@ -50,6 +50,18 @@ def fd(cards: Cards, board: Board):
     )
 
 
+def dfd(cards: Cards, board: Board):
+    suits = cards.suits
+    fd = board.fd
+    if len(board.cards) != 4 or len(fd) < 0:
+        return cards.empty
+
+    return np.all(
+        [f2(suits, card) for card in fd],
+        axis=0,
+    )
+
+
 def fd_h(level):
     def fld(cards: Cards, board: Board):
         suits = cards.suits
@@ -233,10 +245,11 @@ def fb_h(level):
 
 fn = {
     "FD": fd,
-    "F": flush,
+    "DFD": dfd,
+    "FL": flush,
     "BDFD": bdfd,
     "BDFD2": bdfd_2,
-    "FB": fb,
+    "FBL": fb,
 }
 # fn = {f.__name__: f for f in fn}
 fn["NF"] = flush_h(1)
@@ -247,6 +260,6 @@ fn["NFD"] = fd_h(1)
 fn["NFD2"] = fd_h(2)
 # fn["fd_h"] = fd_h(4)
 
-fn["NFD"] = fb_h(1)
-fn["NFD2"] = fb_h(2)
-fn["HFD"] = fb_h(4)
+fn["NFLB"] = fb_h(1)
+fn["NFLB2"] = fb_h(2)
+fn["HFLB"] = fb_h(4)
