@@ -17,55 +17,59 @@ from tree.omaha.ranks import exact_cards
 gto_path = "/Users/barrybaker/Documents/fromAHK/objs3/"
 
 
-def get_boards(situation=""):
-    if situation == "":
-        files = glob.glob(f"{gto_path}*.obj")
-    else:
-        files = glob.glob(
-            os.path.join(
-                gto_path, f"{'_'.join(list(situation.values()))}*.obj"
-            )
-        )
+def get_board_from_link(link: str):
+    return link.replace(gto_path, "").split("_")[-1].replace(".obj", "")
 
-    boards = [
-        Board(
-            f.replace("_".join(list(situation.values())), "")
-            .replace(".obj", "")
-            .replace(gto_path, "")
-            .replace("_", "")
-        )
-        for f in files
+
+def get_boards(filters):
+    files = [
+        glob.glob(f"{gto_path}100_{poss}_{pot}*.obj")
+        for poss in filters["poss"]
+        for pot in filters["pot"]
     ]
 
-    return [f for f in boards if len(f.cards) == 4]
+    # def board_filter(b: Board): # FLUSH
+    #     return (
+    #         len(b.flush) > 0
+    #         and len(Board(b.string_cards[:6]).flush) == 0
+    #         and len(b.cards == 4)
+    #     )
+
+    # def board_filter(b: Board):
+    #     return (
+    #         not b.is_flush
+    #         and not b.is_str8
+    #         and not b.is_paired
+    #         and b.is_suited
+    #     )
+
+    boards = [
+        j
+        for i in files
+        for j in i
+        # if get_board_from_link(j) == "AsKd5cAc"
+        # if board_filter(Board(get_board_from_link(j)))
+    ]
+
+    return boards
 
 
-def load_strat(situation, board: Board, line):
-    file = glob.glob(
-        os.path.join(
-            gto_path,
-            f"{'_'.join(list(situation.values()))}_{board.string_cards}.obj",
-        )
-    )[0]
-    # qw(file)
-    with open(file, "rb") as f:
+def load_strat(url, line):
+    with open(url, "rb") as f:
         a = pickle.load(f)
+
     if line not in a:
         return "NOLINE"
     a = a[line]
-    # qw(a)
+
     actions = sorted(list(a.columns), key=actions_order)
     cards = Cards(a)
-    # board = Board(board)
-    # qw(board)
+    board = Board(get_board_from_link(url))
 
     # start = time()
 
     for f in flush:
         a[f] = flush[f](cards, board)
-
-    # for f in made:
-    #     a[f] = made[f](cards, board)
 
     a["Q"] = made["Q"](cards, board)
     a["FULL"] = made["FULL"](cards, board) & ~a["Q"]
@@ -94,10 +98,6 @@ def load_strat(situation, board: Board, line):
     a["DSDBL"] = str8["dsdbl"](cards, str8_sdbl)
 
     if len(str8_draws) > 0:
-        # start2 = time()
-        # sd = str8["sd"](cards, str8_draws)
-        # qw(time() - start2)
-
         a["WR"] = str8["sd"](cards, str8_draws, 0)
         a["WR1"] = str8["sd"](cards, str8_draws, 1)
         a["OESD"] = str8["sd"](cards, str8_draws, 2) & ~a["WR"] & ~a["WR1"]
@@ -137,3 +137,19 @@ def load_strat(situation, board: Board, line):
     # qw(time() - start)
 
     return a, actions
+
+
+def convert_action_name(action, line):
+    if action == "C":
+        if line[-1] == "C":
+            return "CHECK"
+        return "CALL"
+    if action[0] == "R":
+        return f"RAISE{action[1:]}"
+    return {
+        "F": "FOLD",
+        "C": "CALL",
+        "MIN": "MIN",
+        "MR": "MIN",
+        "A": "ALLIN",
+    }[action]

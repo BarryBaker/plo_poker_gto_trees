@@ -56,14 +56,14 @@ def main(boards: list):
                 continue
             # if len(actions) > 2:
 
-            def convert_action_name(a):
-                if a == "C":
-                    if line[-1] == "C":
-                        return "CHECK"
-                    return "CALL"
-                if a[0] == "R":
-                    return f"RAISE{a[1:]}"
-                return {"F": "FOLD", "C": "CALL"}[a]
+            # def convert_action_name(a):
+            #     if a == "C":
+            #         if line[-1] == "C":
+            #             return "CHECK"
+            #         return "CALL"
+            #     if a[0] == "R":
+            #         return f"RAISE{a[1:]}"
+            #     return {"F": "FOLD", "C": "CALL"}[a]
 
             max_score = strat.apply(
                 lambda row: sorted([row[i] for i in actions])[-2]

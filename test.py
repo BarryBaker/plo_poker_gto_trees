@@ -25,15 +25,15 @@ r = Cards(
     )
 )
 # qw(r)
-b = Board("AsTd9d7d")
+b = Board("AsTd9c")
 
 # str8s = b.str8
 str8_draws = b.str8_draw
 str8_sdbl = b.sdbl
 # qw(f1_card(r.range_, (14, 3)))
-# qw(b.fd)
-qw(r, "", b)
-qw(flush["HFLB"](r, b))
+qw(b.is_suited)
+# qw(r, "", b)
+# qw(flush["HFLB"](r, b))
 # qw(outs, nut)
 # qw("wrap", outs > 2)
 # qw("wrap1", (outs > 2) & nut)

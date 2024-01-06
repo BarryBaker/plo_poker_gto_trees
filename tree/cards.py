@@ -271,5 +271,21 @@ class Board:
     def remaining_ranks(self):
         return [i for i in card_values_inv if i not in self.uranks[0]]
 
+    @property
+    def is_flush(self):
+        return len(self.flush) > 0
+
+    @property
+    def is_str8(self):
+        return len(self.str8) > 0
+
+    @property
+    def is_paired(self):
+        return np.max(self.uranks[1]) > 1
+
+    @property
+    def is_suited(self):
+        return np.max(self.usuits[1]) > 1
+
     def __repr__(self):
         return f"| {' '.join([card_values_inv[i[0]]+suit_values_inv[i[1]] for i in self.cards])} |"

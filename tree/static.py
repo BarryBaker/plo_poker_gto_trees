@@ -27,4 +27,10 @@ def actions_order(action):
         return 0
     if action == "C":
         return 1
+    if action == "MIN":
+        return 2
+    if action == "MR":
+        return 3
+    if action == "A":
+        return 100
     return int(action[1:])
