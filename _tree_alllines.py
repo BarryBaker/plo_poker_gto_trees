@@ -68,7 +68,7 @@ lines = ["R50-C", "R50-C-C-R33", "R50-C-C-R50", "R50-C-C-R75"]
 all_urls = get_boards(filters)
 # print(all_urls)
 """----------------"""
-num_chunks = 9
+num_chunks = 1
 avg_chunk_size = len(all_urls) // num_chunks
 remainder = len(all_urls) % num_chunks
 

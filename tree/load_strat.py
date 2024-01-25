@@ -25,7 +25,7 @@ def get_board_from_link(link: str):
 
 def get_boards(filters):
     files = [
-        glob.glob(f"{gto_path}100_{poss}_{pot}*.obj")
+        glob.glob(f"{gto_path}50_{poss}_{pot}*.obj")
         for poss in filters["poss"]
         for pot in filters["pot"]
     ]
@@ -43,10 +43,10 @@ def get_boards(filters):
     def board_filter(b: Board):
         return (
             not b.is_flush
-            and not b.is_str8
+            and b.is_str8
             and not b.is_paired
             and b.is_suited
-            and len(b.cards == 4)
+            and len(b.cards == 3)
         )
 
     # print(files))
@@ -58,21 +58,21 @@ def get_boards(filters):
         j
         for i in files
         for j in i
-        if len(Board(get_board_from_link(j)).cards) == 3
+        # if len(Board(get_board_from_link(j)).cards) == 3
         # if get_board_from_link(j) == "7s7d2d5c"
-        # if board_filter(Board(get_board_from_link(j)))
+        if board_filter(Board(get_board_from_link(j)))
     ]
     # print(len(boards))
     return boards
 
 
-def load_strat(a, url, line):
-    # with open(url, "rb") as f:
-    #     a = pickle.load(f)
+def load_strat(url, line):
+    with open(url, "rb") as f:
+        a = pickle.load(f)
 
-    # if line not in a:
-    #     return "NOLINE"
-    # a = a[line]
+    if line not in a:
+        return "NOLINE"
+    a = a[line]
 
     actions = sorted(list(a.columns), key=actions_order)
     cards = Cards(a)

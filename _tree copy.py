@@ -163,33 +163,33 @@ def main(boards: list):
                 )
 
                 # -----------
-                # if (
-                #     all(
-                #         [
-                #             i > 80
-                #             for i in [
-                #                 a_result_sort[0][1],
-                #                 bc_0_result_sort[0][1],
-                #                 bc_1_result_sort[0][1],
-                #             ]
-                #         ]
-                #     )
-                #     and len(hand_before) > 0
-                # ):
-                #     return
-                approved = True  # not (
-                # bc_1_result_sort[0][0] == bc_0_result_sort[0][0]
-                # # and max([bc_1_weight, bc_0_weight]) < 0.3
-                # or min([bc_1_weight, bc_0_weight]) < 0.001
-                # or min([bc_1_weight, bc_0_weight]) < min_weight
-                # and not (
-                #     bc_1_result_sort[0][0] != current_action
-                #     and bc_1_result_sort[0][1] > 85
-                #     or bc_0_result_sort[0][0] != current_action
-                #     and bc_0_result_sort[0][1] > 85
-                # )
-                # or max([bc_1_result_sort[0][1], bc_0_result_sort[0][1]]) < min_action
-                # )
+                if (
+                    all(
+                        [
+                            i > 80
+                            for i in [
+                                a_result_sort[0][1],
+                                bc_0_result_sort[0][1],
+                                bc_1_result_sort[0][1],
+                            ]
+                        ]
+                    )
+                    and len(hand_before) > 0
+                ):
+                    return
+                approved = not (
+                    bc_1_result_sort[0][0] == bc_0_result_sort[0][0]
+                    # and max([bc_1_weight, bc_0_weight]) < 0.3
+                    or min([bc_1_weight, bc_0_weight]) < 0.001
+                    or min([bc_1_weight, bc_0_weight]) < min_weight
+                    and not (
+                        bc_1_result_sort[0][0] != current_action
+                        and bc_1_result_sort[0][1] > 85
+                        or bc_0_result_sort[0][0] != current_action
+                        and bc_0_result_sort[0][1] > 85
+                    )
+                    or max([bc_1_result_sort[0][1], bc_0_result_sort[0][1]]) < min_action
+                )
                 # if approved:
                 # print(hand_before, round(weight * 100, 1), a_result_sort)
                 # print(best_cut[0])
@@ -230,30 +230,30 @@ def main(boards: list):
                         c += 1
                 return c
 
-            # if len(actions) == 2:
-            #     min_weight, min_action = step(strat, [], 0.005, 65)
-            #     tree = pruin_tree(tree)
-            #     # qw(count(tree))
-            #     while count(tree) > 45:
-            #         tree = {}
-            #         min_weight, min_action = step(
-            #             strat, [], min_weight + 0.002, min_action + 1
-            #         )
-            #         tree = pruin_tree(tree)
-            #         # qw(count(tree))
-            #         # qw(min_weight, min_action)
+            if len(actions) == 2:
+                min_weight, min_action = step(strat, [], 0.005, 65)
+                tree = pruin_tree(tree)
+                # qw(count(tree))
+                while count(tree) > 45:
+                    tree = {}
+                    min_weight, min_action = step(
+                        strat, [], min_weight + 0.002, min_action + 1
+                    )
+                    tree = pruin_tree(tree)
+                    # qw(count(tree))
+                    # qw(min_weight, min_action)
 
-            # if len(actions) >= 3:
-            #     min_weight, min_action = step(strat, [], 0.007, 60)
-            #     tree = pruin_tree(tree)
+            if len(actions) >= 3:
+                min_weight, min_action = step(strat, [], 0.007, 60)
+                tree = pruin_tree(tree)
 
-            #     while count(tree) > 45:
-            #         tree = {}
-            #         min_weight, min_action = step(
-            #             strat, [], min_weight + 0.005, min_action + 2
-            #         )
-            #         tree = pruin_tree(tree)
-            #         # qw(count(tree))
+                while count(tree) > 45:
+                    tree = {}
+                    min_weight, min_action = step(
+                        strat, [], min_weight + 0.005, min_action + 2
+                    )
+                    tree = pruin_tree(tree)
+                    # qw(count(tree))
 
             # print(
             #     round(init_score / max_score * 100),
@@ -353,7 +353,7 @@ def main(boards: list):
                     "base_action": base_action,
                     "hide": False,
                 }
-            qw(url, line, final_tree)
+            # qw(url, line, final_tree)
 
             filename = f"/Users/barrybaker/Documents/blackcard2/blackcard2_back/app/saved/{url.replace(gto_path,'').replace('.obj','_')}{line}.obj"
 
