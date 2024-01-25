@@ -2,30 +2,33 @@ import pandas as pd
 import numpy as np
 import pickle
 import multiprocessing
+from scipy.stats import pointbiserialr
 
 from collections import Counter
 from functools import reduce
 
-from itertools import combinations
+from itertools import combinations, product
 from time import time
 from icecream import ic as qw
 from tqdm import tqdm
 
-from load_strat import (
+from tree.load_strat import (
     load_strat,
     get_boards,
-    convert_action_name,
     gto_path,
 )
+
+
+from tree._utils import get_result, convert_action_name
 
 
 #'100_BTN_SB_3BP_Th8h8d6c'
 
 filters = {
-    "poss": ["CO_BTN", "EP_BTN"],  # "CO_SB", "MP_SB"],
+    "poss": ["SB_BB"],  # "CO_SB", "MP_SB"],
     "pot": ["SRP"],
 }
-lines = ["C-C"]
+lines = ["C-C-C"]
 # lines = [
 # "C-C-C",
 # "C-C-R33",
@@ -81,28 +84,15 @@ def main(boards: list):
             if len(actions) == 1:
                 continue
 
-            def get_result(a: pd.DataFrame, convert=True):
-                result = {i: a[i].sum() for i in actions}
-                all_sum = sum([result[i] for i in result])
-
-                for i in result:
-                    result[i] = round(result[i] / all_sum * 100)
-                if convert:
-                    return {
-                        convert_action_name(k, line): v
-                        for k, v in result.items()
-                    }
-                return result
-
             max_scores = strat[actions].max(axis=1)
             max_score = max_scores.sum()
-            init_action = (
-                strat[actions].idxmax(axis=1).value_counts().idxmax()
-            )
+
+            init_action = strat[actions].idxmax(axis=1).value_counts().idxmax()
             strat["action"] = init_action
             init_score = strat[init_action].sum()
 
             tree = {}
+            # qw(strat.sample(20))
 
             def append_tree(hand_before, hand):
                 keys = [i[0] for i in hand_before if i[1] == 1]
@@ -111,16 +101,13 @@ def main(boards: list):
                 else:
                     reduce(lambda x, y: x[y], [tree] + keys)[hand] = {}
 
-            # qw(max_score)
-            # qw(init_score)
-
             def step(
                 df: pd.DataFrame,
                 hand_before=[],
             ):
                 a = df.copy()
-                range_weight = a.shape[0] / strat.shape[0]
-                # qw(range_weight)
+                weight = a.shape[0] / strat.shape[0]
+                # qw(weight)
                 a.drop(
                     [
                         c
@@ -137,9 +124,7 @@ def main(boards: list):
 
                 current_action = np.unique(a["action"])
                 if len(current_action) > 1:
-                    raise Exception(
-                        "Multiple action options in iterate step"
-                    )
+                    raise Exception("Multiple action options in iterate step")
                 current_action = current_action[0]
                 other_actions = [j for j in actions if j != current_action]
 
@@ -148,67 +133,150 @@ def main(boards: list):
 
                 # print(a.iloc[:, [0, 1, 2, 3, 4, -3, -2, -1]].sample(20))
 
-                result = []
                 hands = [
                     i
                     for i in a.columns
                     if i
-                    not in [*actions, "action"]
-                    + [f"{j}_gain" for j in actions]
+                    not in [*actions, "action"] + [f"{j}_gain" for j in actions]
                 ]
-                for hand in hands:
-                    for tf in [0, 1]:
-                        filtered = a[a[hand] == tf]
 
-                        if filtered.shape[0] > 0:
-                            for action in other_actions:
-                                filtresult = get_result(filtered, False)
-                                largest_action = max(
-                                    filtresult, key=filtresult.get
-                                )
+                def iter_step(col_cnt):
+                    result = []
+                    for hand in combinations(hands, col_cnt):
+                        for action in other_actions:
+                            corr_coefficient, p_value = pointbiserialr(
+                                a[hand[0]], a[f"{action}_gain"]
+                            )
+                            result.append((hand[0], action, corr_coefficient))
+                        # for tf in product(*([[0, 1]] * col_cnt)):
+                        # filtered = a[
+                        #     np.all(
+                        #         [
+                        #             a[hand[k]] == tf[k]
+                        #             for k in range(col_cnt)
+                        #         ],
+                        #         axis=0,
+                        #     )
+                        # ]
 
-                                largest_value = filtresult[largest_action]
-                                result.append(
-                                    (
-                                        hand,
-                                        tf,
-                                        sum(filtered[f"{action}_gain"]),
-                                        action,
-                                        largest_action,
-                                        largest_value,
-                                    )
-                                )
+                        # if filtered.shape[0] > 0:
+                        #     filtresult = get_result(
+                        #         filtered, actions, line, False
+                        #     )
+                        #     largest_action = max(filtresult, key=filtresult.get)
+
+                        #     largest_value = filtresult[largest_action]
+
+                        #     for action in other_actions:
+                        #         result.append(
+                        #             (
+                        #                 hand,
+                        #                 tf,
+                        #                 sum(filtered[f"{action}_gain"]),
+                        #                 action,
+                        #                 largest_action,
+                        #                 largest_value,
+                        #                 filtresult,
+                        #                 round(
+                        #                     filtered.shape[0]
+                        #                     / strat.shape[0]
+                        #                     * 100
+                        #                 ),
+                        #             )
+                        #         )
+                    return result
+
+                result = iter_step(1)
 
                 if len(result) == 0:
                     return
-                result = sorted(result, key=lambda x: x[2], reverse=True)
-                # qw(current_action, hand_before, result[:10])
+                result = sorted(result, key=lambda x: abs(x[2]), reverse=True)
 
                 best_cut = result[0]
                 score_gain = best_cut[2]
+                # print(best_cut)
+                # qw(hand_before, result[:3])
 
-                if score_gain >= min_gain * max_score / 100 * range_weight:
+                weight_relative = (
+                    round(a[a[best_cut[0]]].shape[0] * 100 / a.shape[0]),
+                )
+                filtresult_origi = get_result(a, actions, line, False)
+                filtresult1 = get_result(
+                    a[a[best_cut[0]]], actions, line, False
+                )
+                filtresult2 = get_result(
+                    a[~a[best_cut[0]]], actions, line, False
+                )
+                largest_actions_origi = max(
+                    filtresult_origi,
+                    key=filtresult1.get,
+                )
+                largest_actions1 = max(
+                    filtresult1,
+                    key=filtresult1.get,
+                )
+                largest_actions2 = max(
+                    filtresult2,
+                    key=filtresult2.get,
+                )
+                largest_value_origi = filtresult_origi[largest_actions_origi]
+                largest_value_1 = filtresult1[largest_actions1]
+                largest_value_2 = filtresult2[largest_actions2]
+
+                if (
+                    (
+                        largest_value_1 < 66
+                        or largest_value_2 < 66
+                        or largest_actions1 != largest_actions2
+                    )
+                    and abs(best_cut[2]) > 0.1
+                    and (
+                        max(
+                            [
+                                largest_value_origi,
+                                largest_value_1,
+                                largest_value_2,
+                            ]
+                        )
+                        - min(
+                            [
+                                largest_value_origi,
+                                largest_value_1,
+                                largest_value_2,
+                            ]
+                        )
+                        > 10
+                    )
+                ):
                     append_tree(
                         hand_before,
                         best_cut[0],
                     )
 
-                    a.loc[
-                        a[best_cut[0]] == best_cut[1], "action"
-                    ] = best_cut[3]
+                    # if best_cut[2] > 0:
+                    #     a.loc[
+                    #         a[best_cut[0]] == best_cut[1], "action"
+                    #     ] = best_cut[
+                    #         1
 
-                    if len(hand_before) > 0:
-                        strat.loc[
-                            (strat[best_cut[0]] == best_cut[1])
-                            & pd.DataFrame(
-                                [strat[i[0]] == i[1] for i in hand_before]
-                            ).all(axis=0),
-                            "action",
-                        ] = best_cut[3]
-                    else:
-                        strat.loc[
-                            strat[best_cut[0]] == best_cut[1], "action"
-                        ] = best_cut[3]
+                    #     ]  # ami besc cut filternel a leggyakoribb action\
+                    # else:
+                    #     a.loc[
+                    #         a[best_cut[0]] != best_cut[1], "action"
+                    #     ] = best_cut[1]
+
+                    # if len(hand_before) > 0:
+                    #     strat.loc[
+                    #         (strat[best_cut[0]] == best_cut[1])
+                    #         & pd.DataFrame(
+                    #             [strat[i[0]] == i[1] for i in hand_before]
+                    #         ).all(axis=0),
+                    #         "action",
+                    #     ] = best_cut[4]
+                    # else:
+                    #     strat.loc[
+                    #         strat[best_cut[0]] == best_cut[1], "action"
+                    #     ] = best_cut[4]
 
                     step(
                         a[a[best_cut[0]]],
@@ -220,15 +288,15 @@ def main(boards: list):
                         hand_before + [(best_cut[0], 0)],
                     )
                 # if bestcut itself has mostly diferent action than current
+                elif True:
+                    return
                 elif best_cut[4] != current_action and best_cut[5] > 60:
                     append_tree(
                         hand_before,
                         best_cut[0],
                     )
 
-                    a.loc[
-                        a[best_cut[0]] == best_cut[1], "action"
-                    ] = best_cut[4]
+                    a.loc[a[best_cut[0]] == best_cut[1], "action"] = best_cut[4]
 
                     if len(hand_before) > 0:
                         strat.loc[
@@ -257,44 +325,14 @@ def main(boards: list):
                     #     return
                     # Doubles
 
-                    two_largest = [v for k, v in get_result(a).items()]
+                    two_largest = [
+                        v for k, v in get_result(a, actions, line).items()
+                    ]
                     second_largest = sorted(two_largest)[-2]
                     weight = 100 * a.shape[0] / strat.shape[0]
 
-                    if (
-                        second_largest / 100 * weight
-                        < split_strength_weights_2
-                    ):
+                    if second_largest / 100 * weight < split_strength_weights_2:
                         return
-                    result = []
-                    for hand in combinations(hands, 2):
-                        for tf in [(0, 0), (0, 1), (1, 0), (1, 1)]:
-                            filtered = a[
-                                (a[hand[0]] == tf[0])
-                                & (a[hand[1]] == tf[1])
-                            ]
-
-                            if filtered.shape[0] > 0:
-                                for action in other_actions:
-                                    score_gain = sum(
-                                        filtered[f"{action}_gain"]
-                                    )
-                                    if (
-                                        score_gain
-                                        >= min_gain
-                                        * min_gain
-                                        * max_score
-                                        / 100
-                                        * range_weight
-                                    ):
-                                        result.append(
-                                            (
-                                                hand,
-                                                tf,
-                                                score_gain,
-                                                action,
-                                            )
-                                        )
 
                     if len(result) == 0:
                         if (
@@ -302,46 +340,7 @@ def main(boards: list):
                             < split_strength_weights_3
                         ):
                             return
-                        result = []
-                        for hand in combinations(hands, 3):
-                            for tf in [
-                                (0, 0, 0),
-                                (0, 1, 0),
-                                (1, 0, 0),
-                                (1, 1, 0),
-                                (0, 0, 1),
-                                (0, 1, 1),
-                                (1, 0, 1),
-                                (1, 1, 1),
-                            ]:
-                                filtered = a[
-                                    (a[hand[0]] == tf[0])
-                                    & (a[hand[1]] == tf[1])
-                                    & (a[hand[2]] == tf[2])
-                                ]
 
-                                if filtered.shape[0] > 0:
-                                    for action in other_actions:
-                                        score_gain = sum(
-                                            filtered[f"{action}_gain"]
-                                        )
-                                        if (
-                                            score_gain
-                                            >= min_gain
-                                            * min_gain
-                                            * max_score
-                                            / 100
-                                            * range_weight
-                                        ):
-                                            result.append(
-                                                (
-                                                    hand,
-                                                    tf,
-                                                    score_gain,
-                                                    action,
-                                                )
-                                            )
-                        # qw(result)
                         if len(result) == 0:
                             return
                         result = sorted(
@@ -367,9 +366,7 @@ def main(boards: list):
                             hand_before + [(most_common, 0)],
                         )
 
-                    result = sorted(
-                        result, key=lambda x: x[2], reverse=True
-                    )
+                    result = sorted(result, key=lambda x: x[2], reverse=True)
 
                     best_cut = result[0]
                     score_gain = best_cut[2]
@@ -392,7 +389,7 @@ def main(boards: list):
 
             # origi_strat = strat.copy()
             step(strat, [])
-
+            # print(tree)
             final_score = sum(
                 [
                     strat[strat["action"] == action][action].sum()
@@ -422,19 +419,23 @@ def main(boards: list):
 
                 # if len(keys) == 0:
 
-                #     level = get_result(a)
+                #     level = get_result(a,actions,line)
 
                 #     return
 
                 # Rest.  itt van vmi bug
                 # try:
                 level["rest"] = get_result(
-                    a[pd.DataFrame([a[j] == 0 for j in keys]).all(axis=0)]
+                    a[pd.DataFrame([a[j] == 0 for j in keys]).all(axis=0)],
+                    actions,
+                    line,
                 )
                 # except:
                 #     qw(original_tree)
                 if len(level[keys[0]]) == 0:
-                    level[keys[0]] = get_result(a[a[keys[0]] == 1])
+                    level[keys[0]] = get_result(
+                        a[a[keys[0]] == 1], actions, line
+                    )
                 else:
                     get_freqs(level[keys[0]], a[a[keys[0]] == 1])
 
@@ -451,7 +452,9 @@ def main(boards: list):
                                     [a[j] == 0 for j in filter_keys[:-1]]
                                 ).all(axis=0)
                                 & (a[filter_keys[-1]] == 1)
-                            ]
+                            ],
+                            actions,
+                            line,
                         )
                     else:
                         get_freqs(
@@ -486,7 +489,7 @@ def main(boards: list):
                 get_freqs(tree, strat)
             # print(tree)
 
-            base_action = get_result(strat)
+            base_action = get_result(strat, actions, line)
 
             def build_saved_tree(tree):  # tree without rest
                 result = {}
@@ -500,11 +503,7 @@ def main(boards: list):
                         result[i]["action"] = {}
                         result[i]["weight"] = 0
                         result[i]["sub"] = build_saved_tree(
-                            {
-                                k: v
-                                for k, v in tree[i].items()
-                                if k != "rest"
-                            }
+                            {k: v for k, v in tree[i].items() if k != "rest"}
                         )
                     else:
                         result[i] = {

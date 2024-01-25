@@ -7,12 +7,14 @@ from time import time
 from icecream import ic as qw
 from tqdm import tqdm
 
-from tree.static import actions_order, card_values_inv
-from tree.cards import Cards, Board
-from tree.omaha.made import fn as made
-from tree.omaha.str8 import fn as str8
-from tree.omaha.flush import fn as flush
-from tree.omaha.ranks import exact_cards
+from omaha._static import actions_order, card_values_inv
+from omaha._cards import Cards, Board
+
+from omaha.made import fn as made
+from omaha.str8 import fn as str8
+from omaha.flush import fn as flush
+
+# from omaha.ranks import exact_cards
 
 gto_path = "/Users/barrybaker/Documents/fromAHK/objs3/"
 
@@ -28,6 +30,7 @@ def get_boards(filters):
         for pot in filters["pot"]
     ]
 
+    # files = [glob.glob(f"{gto_path}*.obj")]
     # def board_filter(b: Board): # FLUSH
     #     return (
     #         len(b.flush) > 0
@@ -36,31 +39,40 @@ def get_boards(filters):
     #     )
 
     # def board_filter(b: Board):
-    #     return (
-    #         not b.is_flush
-    #         and not b.is_str8
-    #         and not b.is_paired
-    #         and b.is_suited
-    #     )
+    #     return not b.is_flush and not b.is_str8 and not b.is_paired and not b.is_suited and len(b.cards == 4)
+    def board_filter(b: Board):
+        return (
+            not b.is_flush
+            and not b.is_str8
+            and not b.is_paired
+            and b.is_suited
+            and len(b.cards == 4)
+        )
 
+    # print(files))
+    # for i in files:
+    #     for j in i:
+    #         # print(type(i), i)
+    #         print(j, len(Board(get_board_from_link(j)).cards))
     boards = [
         j
         for i in files
         for j in i
-        # if get_board_from_link(j) == "AsKd5cAc"
+        if len(Board(get_board_from_link(j)).cards) == 3
+        # if get_board_from_link(j) == "7s7d2d5c"
         # if board_filter(Board(get_board_from_link(j)))
     ]
-
+    # print(len(boards))
     return boards
 
 
-def load_strat(url, line):
-    with open(url, "rb") as f:
-        a = pickle.load(f)
+def load_strat(a, url, line):
+    # with open(url, "rb") as f:
+    #     a = pickle.load(f)
 
-    if line not in a:
-        return "NOLINE"
-    a = a[line]
+    # if line not in a:
+    #     return "NOLINE"
+    # a = a[line]
 
     actions = sorted(list(a.columns), key=actions_order)
     cards = Cards(a)
@@ -101,9 +113,7 @@ def load_strat(url, line):
         a["WR"] = str8["sd"](cards, str8_draws, 0)
         a["WR1"] = str8["sd"](cards, str8_draws, 1)
         a["OESD"] = str8["sd"](cards, str8_draws, 2) & ~a["WR"] & ~a["WR1"]
-        a["OESD1"] = (
-            str8["sd"](cards, str8_draws, 3) & ~a["WR"] & ~a["WR1"]
-        )
+        a["OESD1"] = str8["sd"](cards, str8_draws, 3) & ~a["WR"] & ~a["WR1"]
         a["GS"] = (
             str8["sd"](cards, str8_draws, 4)
             & ~a["WR"]
@@ -118,6 +128,7 @@ def load_strat(url, line):
             & ~a["OESD"]
             & ~a["OESD1"]
         )
+        a["SD"] = a["WR"] | a["OESD"] | a["GS"]
 
     # for i in range(2, 15):
     #     a[str(card_values_inv[i])] = exact_cards(cards, i)
@@ -137,19 +148,3 @@ def load_strat(url, line):
     # qw(time() - start)
 
     return a, actions
-
-
-def convert_action_name(action, line):
-    if action == "C":
-        if line[-1] == "C":
-            return "CHECK"
-        return "CALL"
-    if action[0] == "R":
-        return f"RAISE{action[1:]}"
-    return {
-        "F": "FOLD",
-        "C": "CALL",
-        "MIN": "MIN",
-        "MR": "MIN",
-        "A": "ALLIN",
-    }[action]

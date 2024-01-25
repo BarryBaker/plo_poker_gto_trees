@@ -3,7 +3,7 @@ import pandas as pd
 from itertools import combinations
 
 
-from .static import (
+from ._static import (
     card_values,
     suit_values,
     card_values_inv,

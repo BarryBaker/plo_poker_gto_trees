@@ -4,9 +4,9 @@ import pandas as pd
 from icecream import ic as qw
 from itertools import combinations
 
-from ..static import card_values
-from ..cards import Cards, Board
-from .utils import f1, f2, f1_card
+# from ._static import card_values
+from ._cards import Cards, Board
+from ._utils import f1, f2, f1_card
 
 
 def str8(cards: Cards, str8s: list):

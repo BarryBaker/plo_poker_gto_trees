@@ -3,9 +3,9 @@ import numpy as np
 from icecream import ic as qw
 from itertools import combinations
 
-from ..cards import Board, Cards
-from ..static import card_values_inv, suit_values
-from .utils import f1, f2, f1_card
+from ._cards import Board, Cards
+from ._static import card_values_inv
+from ._utils import f1, f2, f1_card
 
 
 def bdfd(cards: Cards, board: Board):
