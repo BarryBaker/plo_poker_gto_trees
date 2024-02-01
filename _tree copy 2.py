@@ -34,15 +34,10 @@ def main(result_list, boards: list):
     for url in tqdm(boards):
         with open(url, "rb") as f:
             a = pickle.load(f)
-        for line in a:
-            # if (
-            #     line
-            #     not in ["C"]
-            #     # or url
-            #     # != "/Users/barrybaker/Documents/fromAHK/objs3/50_BTN_BB_SRP_KsQc4h.obj"
-            # ):
-            #     continue
 
+        for line in a:
+            # if line != "C":
+            #     continue
             strat_actions = load_strat(
                 a[line],
                 url,
@@ -134,7 +129,7 @@ def main(result_list, boards: list):
                 )
 
                 best_cut = result[0]
-                # print(best_cut)
+
                 bc_1_weight = a[a[best_cut[0]]].shape[0] / a.shape[0] * weight
                 bc_1_result = get_result(a[a[best_cut[0]]], actions, line, False)
                 bc_1_result_sort = sorted(
@@ -187,9 +182,7 @@ def main(result_list, boards: list):
                 # print(round(bc_0_weight * 100, 1), bc_0_result_sort)
                 # print("\n")
 
-                append_tree(
-                    hand_before, (best_cut[0], approved, weight * abs(best_cut[2]))
-                )
+                append_tree(hand_before, (best_cut[0], approved))
 
                 if best_cut[2] > 0:
                     a.loc[a[best_cut[0]], "action"] = best_cut[
@@ -200,14 +193,12 @@ def main(result_list, boards: list):
 
                 step(
                     a[a[best_cut[0]]],
-                    hand_before
-                    + [((best_cut[0], approved, weight * abs(best_cut[2])), 1)],
+                    hand_before + [((best_cut[0], approved), 1)],
                 )
 
                 step(
                     a[~a[best_cut[0]]],
-                    hand_before
-                    + [((best_cut[0], approved, weight * abs(best_cut[2])), 0)],
+                    hand_before + [((best_cut[0], approved), 0)],
                 )
                 # return min_weight, min_action
 
@@ -221,9 +212,9 @@ def main(result_list, boards: list):
                 return c
 
             step(strat, [])
-            # print("treeeee", tree)
+
             tree = pruin_tree(tree)
-            # print(tree, count(tree))
+            # print(tree)
             whole = strat.shape[0]
 
             def get_freqs(level: dict, a: pd.DataFrame):
@@ -377,24 +368,14 @@ def main(result_list, boards: list):
     # # print(result_list)
 
 
-for p in [
-    # ("BTN_BB", "SRP"),
-    # ("SB_BB", "SRP"),
-    # ("CO_BTN", "SRP"),
-    # ("EP_BTN", "SRP"),
-    # ("SB_BB", "3BP"),
-    # ("CO_BTN", "3BP"),
-    # ("EP_BTN", "3BP"),
-    # ("BTN_SB", "3BP"),
-    ("CO_SB", "3BP"),
-    # ("MP_SB", "3BP"),
-]:
-    filters = {
+for filters in [
+    {
         "poss": [
-            p[0],
+            "BTN_SB",
         ],
-        "pot": [p[1]],
-    }
+        "pot": ["3BP"],
+    },
+]:
     all_urls = get_boards(filters)
     # all_urls = ["/Users/barrybaker/Documents/fromAHK/objs3/50_BTN_BB_SRP_KdQhJh.obj"]
     # print(all_urls)
@@ -460,7 +441,7 @@ for p in [
                                 and (len(Board(i["board"]).flush) == 0)
                             )
                         ):
-                            filename = f"100_{filters['poss'][0]}_{filters['pot'][0]}_{type[0]}_{type[1]}_{type[2]}_{type[3]}_flop_{hero}"
+                            filename = f"50_{filters['poss'][0]}_{filters['pot'][0]}_{type[0]}_{type[1]}_{type[2]}_{type[3]}_flop_{hero}"
 
                             if filename in grouped_result:
                                 grouped_result[filename].append(i)
@@ -468,7 +449,7 @@ for p in [
                                 grouped_result[filename] = [i]
 
             for i in grouped_result:
-                filename = f"/Users/barrybaker/Documents/blackcard2/blackcard_newest/src/assets/trees/{i}.json"
+                filename = f"/Users/barrybaker/Documents/blackcard2/full_display/src/assets/trees/{i}.json"
                 with open(
                     filename,
                     "w",

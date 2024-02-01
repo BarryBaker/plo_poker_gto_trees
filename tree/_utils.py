@@ -1,4 +1,5 @@
 import pandas as pd
+from omaha._static import poslist
 
 
 def convert_action_name(action, line):
@@ -29,3 +30,35 @@ def get_result(a: pd.DataFrame, actions, line, convert=True):
     if convert:
         return {convert_action_name(k, line): v for k, v in result.items()}
     return result
+
+
+def split_lines_tostreets(line: list[str]):
+    cs = [i for i in line if i == "C"]
+    if len(cs) == 0 or (len(cs) == 1 and line[0] == "C"):
+        return line, []
+
+    if line[0] == "C":
+        otherC = [k for k, n in enumerate(line) if n == "C"][1]
+    else:
+        otherC = [k for k, n in enumerate(line) if n == "C"][0]
+    flopLine = line[: otherC + 1]
+    turnLine = line[otherC + 1 :]
+    if len(turnLine) == 0:
+        turnLine = [""]
+    return flopLine, turnLine
+
+
+def detect_hero(poss: str, line: str):
+    poss = poss.split("_")
+    flopLine, turnLine = split_lines_tostreets(line.split("-"))
+    pos1isIp = poslist.index(poss[0]) > poslist.index(poss[1])
+
+    line = turnLine if len(turnLine) > 0 else flopLine
+
+    action_count = len(line)
+    if line[0] == "":
+        action_count = 0
+
+    if pos1isIp and action_count % 2 == 0 or not pos1isIp and action_count % 2 == 1:
+        return poss[1]
+    return poss[0]

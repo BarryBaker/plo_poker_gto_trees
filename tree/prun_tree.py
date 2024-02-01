@@ -152,6 +152,13 @@
 # }
 
 
+def count(prod, c=0, importance_list=[]):
+    for mykey in prod:
+        if isinstance(prod[mykey], dict):
+            c, importance_list = count(prod[mykey], c + 1, importance_list + [mykey[2]])
+    return c, importance_list
+
+
 def get_keys(dictionary):
     result = []
     for key, value in dictionary.items():
@@ -165,24 +172,36 @@ def get_keys(dictionary):
 # print(get_keys(a))
 
 
-def del_keys(d):
+def del_keys(d, imp=0):
     keylist = list(d.keys())
     for cnt, key in enumerate(keylist):
-        approved_right = key[1] or any([j[1] for j in get_keys(d[key])])
+        approved_right = (key[1] and key[2] > imp) or any(
+            [(j[1] and j[2] > imp) for j in get_keys(d[key])]
+        )
         approved_below = False
         if cnt + 1 < len(keylist):
             below = {k: d[k] for k in keylist[cnt + 1 :] if cnt + 1 < len(keylist)}
-            approved_below = any([j[1] for j in get_keys(below)])
+            approved_below = any([(j[1] and j[2] > imp) for j in get_keys(below)])
         if not approved_right and not approved_below:
             del d[key]
         elif type(d[key]) is dict:
-            del_keys(d[key])
-
-    # return result
+            del_keys(d[key], imp)
 
 
-# del_keys(a)
-# print(a)
+# def del_keys(d):
+#     keylist = list(d.keys())
+#     for cnt, key in enumerate(keylist):
+#         approved_right = key[1] or any([j[1] for j in get_keys(d[key])])
+#         approved_below = False
+#         if cnt + 1 < len(keylist):
+#             below = {k: d[k] for k in keylist[cnt + 1 :] if cnt + 1 < len(keylist)}
+#             approved_below = any([j[1] for j in get_keys(below)])
+#         if not approved_right and not approved_below:
+#             del d[key]
+#         elif type(d[key]) is dict:
+#             del_keys(d[key])
+
+# return result
 
 
 def replace_keys(d):
@@ -199,5 +218,14 @@ def replace_keys(d):
 
 def pruin_tree(d):
     del_keys(d)
-    # print(d)
+    keycount, importances = count(d)
+
+    if keycount > 54:
+        importances.sort()
+        idx = max(keycount - 58, 0)
+        while keycount > 54:
+            del_keys(d, importances[idx])
+            keycount, _ = count(d)
+            idx += 1
+    # print(keycount)
     return replace_keys(d)
