@@ -50,15 +50,60 @@ def split_lines_tostreets(line: list[str]):
 
 def detect_hero(poss: str, line: str):
     poss = poss.split("_")
-    flopLine, turnLine = split_lines_tostreets(line.split("-"))
-    pos1isIp = poslist.index(poss[0]) > poslist.index(poss[1])
+    if len(poss) == 2:
+        flopLine, turnLine = split_lines_tostreets(line.split("-"))
+        pos1isIp = poslist.index(poss[0]) > poslist.index(poss[1])
 
-    line = turnLine if len(turnLine) > 0 else flopLine
+        line = turnLine if len(turnLine) > 0 else flopLine
 
-    action_count = len(line)
+        action_count = len(line)
+        if line[0] == "":
+            action_count = 0
+
+        if pos1isIp and action_count % 2 == 0 or not pos1isIp and action_count % 2 == 1:
+            return poss[1]
+        return poss[0]
+
+    line = line.split("-")
+    byPos = None
+    if poss[0] == "CO":
+        if poss[2] == "BB":
+            byPos = ["BB", "CO", "BTN"]
+        else:
+            byPos = ["SB", "CO", "BTN"]
+    if poss[0] == "MP":
+        byPos = ["MP", "CO", "BTN"]
+    if poss[0] == "EP":
+        byPos = ["EP", "CO", "BTN"]
+
+    if "F" in line and line.index("F") < len(line) - 2:
+        lineUntilFold = line[: line.index("F") + 1]
+        lineAfterfold = line[line.index("F") + 1 :]
+        linsAsNormal = lineUntilFold + lineAfterfold[:1]
+        if len(linsAsNormal) % 3 == 0:
+            lastacctionsNormal = [
+                byPos[0],
+                byPos[1],
+                byPos[2],
+            ]
+        elif len(linsAsNormal) % 3 == 1:
+            lastacctionsNormal = [
+                byPos[1],
+                byPos[2],
+                byPos[0],
+            ]
+        else:
+            lastacctionsNormal = [
+                byPos[2],
+                byPos[0],
+                byPos[1],
+            ]
+        if len(lineAfterfold) % 2 == 0:
+            return lastacctionsNormal[2]
+
+        else:
+            return lastacctionsNormal[0]
+
     if line[0] == "":
-        action_count = 0
-
-    if pos1isIp and action_count % 2 == 0 or not pos1isIp and action_count % 2 == 1:
-        return poss[1]
-    return poss[0]
+        return byPos[0]
+    return byPos[len(line) % 3]

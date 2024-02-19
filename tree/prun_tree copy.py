@@ -1,6 +1,3 @@
-import time
-
-
 def count(prod, c=0, importance_list=[]):
     for mykey in prod:
         if isinstance(prod[mykey], dict):
@@ -69,18 +66,15 @@ def pruin_tree(d):
     del_keys(d)
 
     keycount, importances = count(d)
-    # importances.sort()
-    # print(keycount)
-    if keycount > 55:
-        # start_time = time.time()
-        importances.sort()
-        # idx = max(keycount - 59, 0)
-        idx = 0
-        while keycount > 55:
-            # print(keycount)
-            del_keys(d, importances[idx])
-            keycount, _ = count(d)
-            idx += 1
-        # print("--- %s seconds ---" % (time.time() - start_time))
+    importances.sort()
+    print(importances)
+    # if keycount > 55:
+
+    #     importances.sort()
+    #     idx = max(keycount - 59, 0)
+    #     while keycount > 55:
+    #         del_keys(d, importances[idx])
+    #         keycount, _ = count(d)
+    #         idx += 1
 
     return replace_keys(d)

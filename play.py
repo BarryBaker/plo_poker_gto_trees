@@ -7,6 +7,8 @@ from icecream import ic as qw
 import json
 from scipy.stats import pointbiserialr
 
-a = 0 > 2
-b = False
-print(a == b)
+a = [("a", "b"), ("a", "c")]
+print(a == [("a", "b"), ("a", "c")])
+
+a = [i for i in [1, 2, 3] if i == 4]
+print(a == [])

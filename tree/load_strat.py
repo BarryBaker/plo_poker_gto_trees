@@ -23,6 +23,10 @@ def get_board_from_link(link: str):
     return link.replace(gto_path, "").split("_")[-1].replace(".obj", "")
 
 
+def get_pot_from_link(link: str):
+    return link.replace(gto_path, "").split("_")[-2]
+
+
 def get_boards(filters):
     files = [
         glob.glob(f"{gto_path}100_{poss}_{pot}*.obj")
@@ -45,7 +49,7 @@ def get_boards(filters):
         return (
             not b.is_flush
             and not b.is_str8
-            and b.is_paired
+            and not b.is_paired
             and not b.is_suited
             and len(b.cards) == 3
         )
@@ -59,9 +63,9 @@ def get_boards(filters):
         j
         for i in files
         for j in i
-        # if len(Board(get_board_from_link(j)).cards) == 3
+        if len(Board(get_board_from_link(j)).cards) == 3
         # if get_board_from_link(j) == "7s7d2d5c"
-        if board_filter(Board(get_board_from_link(j)))
+        # if board_filter(Board(get_board_from_link(j)))
     ]
     # print(len(boards))
     return boards
@@ -93,6 +97,7 @@ def load_strat(a, url):  # line):
     a["2P"] = made["2P"](cards, board) & ~a["TRIPS"]
     a["2PT"] = made["2PT"](cards, board)
     a["TP"] = made["TP"](cards, board)
+    a["TPTK"] = made["TPTK"](cards, board)
     a["MP"] = made["MP"](cards, board)
     a["LP"] = made["LP"](cards, board)
     a["BOP"] = made["BOP"](cards, board)

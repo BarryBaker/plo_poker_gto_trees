@@ -88,16 +88,12 @@ def full_1(cards: Cards, board: Board):
             or np.array_equal(counts, np.array([1, 1, 1, 2]))
             or np.array_equal(counts, np.array([2, 1, 2]))
         ):
-            return np.all(
-                [f1(ranks, doubles[-1]), f1(ranks, singles[-1])], axis=0
-            )
+            return np.all([f1(ranks, doubles[-1]), f1(ranks, singles[-1])], axis=0)
 
         if np.array_equal(counts, np.array([2, 2])) or np.array_equal(
             counts, np.array([1, 2, 2])
         ):
-            return np.all(
-                [f1(ranks, doubles[-1]), f1(ranks, doubles[-2])], axis=0
-            )
+            return np.all([f1(ranks, doubles[-1]), f1(ranks, doubles[-2])], axis=0)
 
     triple = unique[counts > 2][0]
     higher_ranks = unique[unique > triple]
@@ -203,11 +199,7 @@ def rr(cards: Cards, board: Board):
     ranks = cards.ranks
 
     unique, counts = board.uranks
-    remaining = [
-        i
-        for i in card_values_inv
-        if i < np.max(unique) and i not in unique
-    ]
+    remaining = [i for i in card_values_inv if i < np.max(unique) and i not in unique]
 
     return np.any(
         [f2(ranks, card) for card in remaining],
@@ -219,11 +211,7 @@ def lrr(cards: Cards, board: Board):
     ranks = cards.ranks
 
     unique, counts = board.uranks
-    remaining = [
-        i
-        for i in card_values_inv
-        if i < np.max(unique) and i not in unique
-    ]
+    remaining = [i for i in card_values_inv if i < np.max(unique) and i not in unique]
     remaining = remaining[int(len(remaining) / 2) :]
     return np.any(
         [f2(ranks, card) for card in remaining],
@@ -235,12 +223,20 @@ def hrr(cards: Cards, board: Board):
     ranks = cards.ranks
 
     unique, counts = board.uranks
-    remaining = [
-        i
-        for i in card_values_inv
-        if i < np.max(unique) and i not in unique
-    ]
+    remaining = [i for i in card_values_inv if i < np.max(unique) and i not in unique]
     remaining = remaining[: int(len(remaining) / 2)]
+    return np.any(
+        [f2(ranks, card) for card in remaining],
+        axis=0,
+    )
+
+
+def drr(cards: Cards, board: Board):
+    ranks = cards.ranks
+
+    unique, counts = board.uranks
+    remaining = [i for i in card_values_inv if i not in unique]
+    print(remaining)
     return np.any(
         [f2(ranks, card) for card in remaining],
         axis=0,
@@ -359,7 +355,7 @@ fn = {
     "2P": twop,
     "2PT": twop_1,
     "TP": tp,
-    "TP1": tp_1,
+    "TPTK": tp_1,
     "MP": mp,
     "LP": lp,
     "BOP": bop,
@@ -367,5 +363,6 @@ fn = {
     "RR": rr,
     "LRR": lrr,
     "HRR": hrr,
+    "DRR": drr,
 }
 # fn = {f.__name__: f for f in fn}

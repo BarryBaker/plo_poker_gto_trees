@@ -36,7 +36,7 @@ def main(result_list, boards: list):
 
         board = Url(url).board
 
-        # if board.string_cards not in ["Js9d4c", "AsJd7c"]:
+        # if board.string_cards not in ["Js9d4c"]:
         #     continue
         # # print(board.is_paired)
         # print(board.is_flush)
@@ -366,17 +366,17 @@ def main(result_list, boards: list):
 
 
 for p in [
-    # ("BTN_BB", "SRP", {"BTN": "C", "BB": ""}),
-    ("MP_BB", "SRP", {"MP": "C", "BB": ""}),
-    ("SB_BB", "SRP", {"SB": "", "BB": "C"}),
-    ("CO_BTN", "SRP", {"BTN": "C", "CO": ""}),
-    ("EP_BTN", "SRP", {"BTN": "C", "EP": ""}),
-    ("SB_BB", "3BP", {"SB": "", "BB": "C"}),
-    ("CO_BTN", "3BP", {"CO": "", "BTN": "C"}),
-    ("EP_CO", "3BP", {"EP": "", "CO": "C"}),
-    ("BTN_SB", "3BP", {"BTN": "C", "SB": ""}),
-    ("CO_SB", "3BP", {"CO": "C", "SB": ""}),
-    ("MP_SB", "3BP", {"MP": "C", "SB": ""}),
+    ("BTN_BB", "SRP"),
+    # ("MP_BB", "SRP"),
+    # # ("SB_BB", "SRP"),
+    # ("CO_BTN", "SRP"),
+    # # ("EP_BTN", "SRP"),
+    # ("SB_BB", "3BP"),
+    # ("CO_BTN", "3BP"),
+    # ("EP_CO", "3BP"),
+    # ("BTN_SB", "3BP"),
+    # ("CO_SB", "3BP"),
+    # ("MP_SB", "3BP"),
     # ("CO_BTN_BB", "SRP"),
     # ("MP_CO_BTN", "SRP"),
     # ("EP_CO_BTN", "3BP"),
@@ -432,7 +432,7 @@ for p in [
                 result, key=lambda x: card_values[x["board"][0]], reverse=True
             )
             # print([i["board"] for i in result])
-            grouped_result = {"tozip": {}, "nottozip": {}}
+            grouped_result = {}
 
             for type in [
                 [False, False, False, False],
@@ -460,36 +460,25 @@ for p in [
                             )
                         ):
                             filename = f"100_{filters['poss'][0]}_{filters['pot'][0]}_{type[0]}_{type[1]}_{type[2]}_{type[3]}_flop_{hero}"
-                            if i["line"] == p[2][hero]:
-                                if filename in grouped_result["nottozip"]:
-                                    grouped_result["nottozip"][filename].append(i)
-                                else:
-                                    grouped_result["nottozip"][filename] = [i]
+
+                            if filename in grouped_result:
+                                grouped_result[filename].append(i)
                             else:
-                                # filename = f"100_{filters['poss'][0]}_{filters['pot'][0]}_{type[0]}_{type[1]}_{type[2]}_{type[3]}_flop_{hero}t"
+                                grouped_result[filename] = [i]
 
-                                if filename in grouped_result["tozip"]:
-                                    grouped_result["tozip"][filename].append(i)
-                                else:
-                                    grouped_result["tozip"][filename] = [i]
-
-            for i in grouped_result["nottozip"]:
-                filename = f"/Users/barrybaker/Documents/blackcard2/blackcard_5/public/trees/{i}.json"
+            for i in grouped_result:
                 # filename = f"/Users/barrybaker/Documents/blackcard2/full_display/src/assets/trees/{i}.json"
+                filename = f"/Users/barrybaker/Documents/blackcard2/blackcard_5/public/trees/{i}.json"
                 with open(
                     filename,
                     "w",
                 ) as fp:
-                    json.dump(grouped_result["nottozip"][i], fp)
-            for i in grouped_result["tozip"]:
-                filename = f"/Users/barrybaker/Documents/blackcard2/blackcard_5/public/trees/{i}.json"
+                    json.dump(grouped_result[i], fp)
 
-                json_str = (
-                    json.dumps(grouped_result["tozip"][i]) + "\n"
-                )  # 2. string (i.e. JSON)
-                json_bytes = json_str.encode("utf-8")  # 3. bytes (i.e. UTF-8)
+                # json_str = json.dumps(grouped_result[i]) + "\n"  # 2. string (i.e. JSON)
+                # json_bytes = json_str.encode("utf-8")  # 3. bytes (i.e. UTF-8)
 
-                with gzip.open(
-                    filename + ".gz", "w"
-                ) as fout:  # 4. fewer bytes (i.e. gzip)
-                    fout.write(json_bytes)
+                # with gzip.open(
+                #     filename + ".gz", "w"
+                # ) as fout:  # 4. fewer bytes (i.e. gzip)
+                #     fout.write(json_bytes)
