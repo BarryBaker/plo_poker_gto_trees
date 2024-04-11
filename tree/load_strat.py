@@ -49,9 +49,9 @@ def get_boards(filters):
         return (
             not b.is_flush
             and not b.is_str8
-            and not b.is_paired
+            # and not b.is_paired
             and not b.is_suited
-            and len(b.cards) == 3
+            and len(b.cards) == 4
         )
 
     # print(files))
@@ -63,7 +63,7 @@ def get_boards(filters):
         j
         for i in files
         for j in i
-        if len(Board(get_board_from_link(j)).cards) == 3
+        if len(Board(get_board_from_link(j)).cards) == 4
         # if get_board_from_link(j) == "7s7d2d5c"
         # if board_filter(Board(get_board_from_link(j)))
     ]
@@ -105,6 +105,8 @@ def load_strat(a, url):  # line):
     a["RR"] = made["RR"](cards, board)
     a["LRR"] = made["LRR"](cards, board)
     a["HRR"] = made["HRR"](cards, board)
+    a["DRR"] = made["DRR"](cards, board)
+    a["AA,KK"] = made["AA,KK"](cards, board)
 
     str8s = board.str8
     str8_draws = board.str8_draw

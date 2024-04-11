@@ -236,11 +236,20 @@ def drr(cards: Cards, board: Board):
 
     unique, counts = board.uranks
     remaining = [i for i in card_values_inv if i not in unique]
-    print(remaining)
-    return np.any(
-        [f2(ranks, card) for card in remaining],
-        axis=0,
-    )
+
+    return np.sum([f2(ranks, card) for card in remaining], axis=0) > 1
+
+
+def aakk(cards: Cards, board: Board):
+    ranks = cards.ranks
+
+    unique, counts = board.uranks
+    remaining = [i for i in card_values_inv if i not in unique]
+
+    if max(unique) > 12:
+        return cards.empty
+
+    return f2(ranks, 14) | f2(ranks, 13)
 
 
 def tp(cards: Cards, board: Board):
@@ -364,5 +373,6 @@ fn = {
     "LRR": lrr,
     "HRR": hrr,
     "DRR": drr,
+    "AA,KK": aakk,
 }
 # fn = {f.__name__: f for f in fn}
