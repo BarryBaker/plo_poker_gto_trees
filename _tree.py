@@ -96,8 +96,6 @@ def main(result_list, boards: list):
                                     )
                                     result.append((hand[0], action, corr_coefficient))
                                 except Exception as e:
-                                    # print(e)
-                                    # print(a[f"{action}_gain"])
                                     continue
 
                         return result
@@ -117,7 +115,7 @@ def main(result_list, boards: list):
                         Url(url).pot,
                     )
                     if result_filtered and len(result_filtered) > 0:
-                        # print(result_filtered)
+
                         result = result_filtered
 
                     a_result = get_result(a, actions, line, False)
@@ -129,7 +127,7 @@ def main(result_list, boards: list):
 
                     best_cut = result[0]
 
-                    bc_1_weight = a[a[best_cut[0]]].shape[0] / a.shape[0] * weight
+                    # bc_1_weight = a[a[best_cut[0]]].shape[0] / a.shape[0] * weight
                     bc_1_result = get_result(a[a[best_cut[0]]], actions, line, False)
                     bc_1_result_sort = sorted(
                         [(k, v) for k, v in bc_1_result.items()],
@@ -137,7 +135,7 @@ def main(result_list, boards: list):
                         reverse=True,
                     )
 
-                    bc_0_weight = a[~a[best_cut[0]]].shape[0] / a.shape[0] * weight
+                    # bc_0_weight = a[~a[best_cut[0]]].shape[0] / a.shape[0] * weight
                     bc_0_result = get_result(a[~a[best_cut[0]]], actions, line, False)
                     bc_0_result_sort = sorted(
                         [(k, v) for k, v in bc_0_result.items()],
@@ -150,13 +148,9 @@ def main(result_list, boards: list):
                     append_tree(
                         hand_before, (best_cut[0], approved, weight * abs(best_cut[2]))
                     )
-                    # if hand_before_hands == []:
-                    #     print(board, line, tree)
 
                     if best_cut[2] > 0:
-                        a.loc[a[best_cut[0]], "action"] = best_cut[
-                            1
-                        ]  # ami besc cut filternel a leggyakoribb action\
+                        a.loc[a[best_cut[0]], "action"] = best_cut[1]
                     else:
                         a.loc[~a[best_cut[0]], "action"] = best_cut[1]
 
@@ -316,10 +310,6 @@ for p in [
     ("BTN_SB", "3BP"),
     ("CO_SB", "3BP"),
     ("MP_SB", "3BP"),
-    # ("CO_BTN_BB", "SRP"),
-    # ("MP_CO_BTN", "SRP"),
-    # ("EP_CO_BTN", "3BP"),
-    # ("CO_BTN_SB", "3BP"),
 ]:
     filters = {
         "poss": [
@@ -328,7 +318,6 @@ for p in [
         "pot": [p[1]],
     }
     all_urls = get_boards(filters)
-    # all_urls = ["/Users/barrybaker/Documents/fromAHK/objs3/50_BTN_BB_SRP_KdQhJh.obj"]
 
     """----------------"""
     num_chunks = 9
@@ -370,8 +359,7 @@ for p in [
             result = sorted(
                 result, key=lambda x: card_values[x["board"][0]], reverse=True
             )
-            # print([i["board"] for i in result])
-            # grouped_result = {"tozip": {}, "nottozip": {}}
+
             grouped_result = {}
 
             for type in [
