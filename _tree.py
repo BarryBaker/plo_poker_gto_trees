@@ -3,7 +3,6 @@ import numpy as np
 import pickle
 import multiprocessing
 from scipy.stats import pointbiserialr
-import json
 
 from collections import Counter
 from functools import reduce
@@ -12,10 +11,7 @@ from itertools import combinations, product
 from time import time
 from icecream import ic as qw
 from tqdm import tqdm
-import gzip
-import warnings
 
-warnings.filterwarnings("error")
 
 from tree.load_strat import load_strat, get_boards, gto_path, get_board_from_link
 from tree.prun_tree import pruin_tree
@@ -26,8 +22,6 @@ from tree._utils import get_result, convert_action_name, detect_hero
 from omaha._static import card_values, poslist
 from omaha._cards import Board
 
-#'100_BTN_SB_3BP_Th8h8d6c'
-
 
 def main(result_list, boards: list):
     for url in tqdm(boards):
@@ -36,62 +30,22 @@ def main(result_list, boards: list):
 
         board = Url(url).board
 
-        # if board.string_cards not in ["Js9d4c", "AsJd7c"]:
-        #     continue
-        # # print(board.is_paired)
-        # print(board.is_flush)
-        # print(board.is_str8)
-        # print(board.is_suited)
-        # print(board.is_sd)
-        # print(board.is_sdbl)
         for line in a:
-            # if line not in [
-            #     "C"
-            #     ""
-            #     "C-C-C",
-            #     "C-C-R33",
-            #     "C-C-R50",
-            #     "C-C-R75",
-            #     "C-C-R100",
-            #     "C-R75-C-C",
-            #     # "C-R75-R75-C-C",
-            #     # "C-R75-R75-C-R33",
-            #     # "C-R75-R75-C-R50",
-            #     # "C-R75-R75-C-R100",
-            #     "C-C",
-            #     "C-R33-C",
-            #     "C-R50-C",
-            # "C-R75-C",
-            #     "C-R100-C",
-            #     "C-C-C-R33",
-            #     "C-C-C-R50",
-            #     "C-C-C-R100",
-            #     "C-R75-R75-C",
-            # ]:
-            #     continue
-            is_attack = Line(line).is_attack
 
+            is_attack = Line(line).is_attack
             strat_actions = load_strat(
                 a[line],
                 url,
-            )  # line)
-            # strat_actions = load_strat(url, line)
-
-            # if strat_actions == "NOLINE":
-            #     continue
-
+            )
             strat_full, actions = strat_actions
             strat = strat_full.copy()
             strat = strat[strat[actions].max(axis=1) > 0]
 
             tree = {}
             if len(actions) > 1:
-                # max_scores = strat[actions].max(axis=1)
-                # max_score = max_scores.sum()
 
                 init_action = strat[actions].idxmax(axis=1).value_counts().idxmax()
                 strat["action"] = init_action
-                # init_score = strat[init_action].sum()
 
                 def append_tree(hand_before, hand):
                     keys = [i[0] for i in hand_before if i[1] == 1]
@@ -128,7 +82,8 @@ def main(result_list, boards: list):
                     hands = [
                         i
                         for i in a.columns
-                        if i not in [*actions, "action"] + [f"{j}_gain" for j in actions]
+                        if i
+                        not in [*actions, "action"] + [f"{j}_gain" for j in actions]
                     ]
 
                     def iter_step(col_cnt):
@@ -154,7 +109,12 @@ def main(result_list, boards: list):
                     result = sorted(result, key=lambda x: abs(x[2]), reverse=True)
 
                     result_filtered = skeleton(
-                        board, hand_before, result, is_attack, strat.columns, Url(url).pot
+                        board,
+                        hand_before,
+                        result,
+                        is_attack,
+                        strat.columns,
+                        Url(url).pot,
                     )
                     if result_filtered and len(result_filtered) > 0:
                         # print(result_filtered)
@@ -215,16 +175,6 @@ def main(result_list, boards: list):
 
                 step(strat, [])
 
-            # def count(prod, c=0):
-            #     for mykey in prod:
-            #         if isinstance(prod[mykey], dict):
-            #             # calls repeatedly
-            #             c = count(prod[mykey], c + 1)
-            #         else:
-            #             c += 1
-            #     return c
-
-            # print(tree, count(tree))
             tree = pruin_tree(tree)
             whole = strat.shape[0]
 
@@ -254,7 +204,9 @@ def main(result_list, boards: list):
                     )
                     level["sub"][keys[0]]["rest"] = {}
                     level["sub"][keys[0]]["sub"] = {}
-                    level["sub"][keys[0]]["weight"] = a[a[keys[0]] == 1].shape[0] / whole
+                    level["sub"][keys[0]]["weight"] = (
+                        a[a[keys[0]] == 1].shape[0] / whole
+                    )
                 else:
                     get_freqs(level["sub"][keys[0]], a[a[keys[0]] == 1])
 
@@ -297,12 +249,8 @@ def main(result_list, boards: list):
                             ],
                         )
 
-            # print(board, line, tree)
             if len(tree) > 0:
                 get_freqs(tree, strat)
-            # else:
-            #     print(board, line)
-            # print("\n", "\n", tree)
 
             base_action = get_result(strat, actions, line)
 
@@ -353,35 +301,9 @@ def main(result_list, boards: list):
                     "hero": detect_hero(f"{situ[1]}_{situ[2]}_{situ[3]}", situ[6]),
                 }
 
-            # print(final_tree)
-
-            # filename = f"/Users/barrybaker/Documents/blackcard2/full_display/src/assets/trees/50_BTN_BB_SRP_False_True_True_False_flop_BTN.json"
-
             result_list.append(result)
-            # with open(
-            #     filename,
-            #     "w",
-            # ) as fp:
-            #     json.dump([result], fp)
 
 
-# for p in [
-#     # ("BTN_BB", "SRP", {"BTN": "C", "BB": ""}),
-#     ("MP_BB", "SRP", {"MP": "C", "BB": ""}),
-#     ("SB_BB", "SRP", {"SB": "", "BB": "C"}),
-#     ("CO_BTN", "SRP", {"BTN": "C", "CO": ""}),
-#     ("EP_BTN", "SRP", {"BTN": "C", "EP": ""}),
-#     ("SB_BB", "3BP", {"SB": "", "BB": "C"}),
-#     ("CO_BTN", "3BP", {"CO": "", "BTN": "C"}),
-#     ("EP_CO", "3BP", {"EP": "", "CO": "C"}),
-#     ("BTN_SB", "3BP", {"BTN": "C", "SB": ""}),
-#     ("CO_SB", "3BP", {"CO": "C", "SB": ""}),
-#     ("MP_SB", "3BP", {"MP": "C", "SB": ""}),
-#     # ("CO_BTN_BB", "SRP"),
-#     # ("MP_CO_BTN", "SRP"),
-#     # ("EP_CO_BTN", "3BP"),
-#     # ("CO_BTN_SB", "3BP"),
-# ]:
 for p in [
     ("BTN_BB", "SRP"),
     ("MP_BB", "SRP"),
@@ -483,22 +405,3 @@ for p in [
                                 grouped_result[filename].append(i)
                             else:
                                 grouped_result[filename] = [i]
-
-            # for i in grouped_result["nottozip"]:
-            #     filename = f"/Users/barrybaker/Documents/blackcard2/blackcard_5/public/trees/{i}.json"
-            #     # filename = f"/Users/barrybaker/Documents/blackcard2/full_display/src/assets/trees/{i}.json"
-            #     with open(
-            #         filename,
-            #         "w",
-            #     ) as fp:
-            #         json.dump(grouped_result["nottozip"][i], fp)
-            # for i in grouped_result:
-            #     filename = f"/Users/barrybaker/Documents/blackcard2/blackcard_6/public/trees/{i}.json"
-
-            #     json_str = json.dumps(grouped_result[i]) + "\n"  # 2. string (i.e. JSON)
-            #     json_bytes = json_str.encode("utf-8")  # 3. bytes (i.e. UTF-8)
-
-            #     with gzip.open(
-            #         filename + ".gz", "w"
-            #     ) as fout:  # 4. fewer bytes (i.e. gzip)
-            #         fout.write(json_bytes)
