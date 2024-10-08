@@ -20,18 +20,6 @@ class Cards:
                 for c in a.index
             ]
         )
-        # qw(range_)
-        # sorting_indices = np.lexsort(
-        #     (
-        #         range_[:, 3, 0],
-        #         range_[:, 2, 0],
-        #         range_[:, 1, 0],
-        #         range_[:, 0, 0],
-        #     ),
-        #     axis=0,
-        # )
-        # # qw((range_[:, 0, 0], range_[:, 1, 0], range_[:, 2, 0]))
-        # self.range_ = range_[sorting_indices[::-1]]
 
     @property
     def ranks(self):
@@ -197,7 +185,9 @@ class Board:
                     if (ns[0], ns[1]) not in str8_cards:
                         str_draws.append(to_append)
                     else:
-                        matched = [i for i in str8s if i[0] == ns[0] and i[1] == ns[1]][0]
+                        matched = [i for i in str8s if i[0] == ns[0] and i[1] == ns[1]][
+                            0
+                        ]
 
                         if ns[2] < matched[2]:
                             str_draws.append(to_append)

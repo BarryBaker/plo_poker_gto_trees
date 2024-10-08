@@ -16,7 +16,7 @@ from omaha.flush import fn as flush
 
 # from omaha.ranks import exact_cards
 
-gto_path = "/Users/barrybaker/Documents/fromAHK/objs3/"
+gto_path = "/{PATH TO SOLVED GTO FILES}/"
 
 
 def get_board_from_link(link: str):
@@ -34,17 +34,6 @@ def get_boards(filters):
         for pot in filters["pot"]
     ]
 
-    # files = [glob.glob(f"{gto_path}50*_{'SRP'}*.obj")]
-    # def board_filter(b: Board): # FLUSH
-    #     return (
-    #         len(b.flush) > 0
-    #         and len(Board(b.string_cards[:6]).flush) == 0
-    #         and len(b.cards == 4)
-    #     )
-
-    # def board_filter(b: Board):
-    #     return not b.is_flush and not b.is_str8 and not b.is_paired and not b.is_suited and len(b.cards == 4)
-
     def board_filter(b: Board):
         return (
             not b.is_flush
@@ -54,11 +43,6 @@ def get_boards(filters):
             and len(b.cards) == 4
         )
 
-    # print(files))
-    # for i in files:
-    #     for j in i:
-    #         # print(type(i), i)
-    #         print(j, len(Board(get_board_from_link(j)).cards))
     boards = [
         j
         for i in files
@@ -71,13 +55,7 @@ def get_boards(filters):
     return boards
 
 
-def load_strat(a, url):  # line):
-    # with open(url, "rb") as f:
-    #     a = pickle.load(f)
-
-    # if line not in a:
-    #     return "NOLINE"
-    # a = a[line]
+def load_strat(a, url):
 
     actions = sorted(list(a.columns), key=actions_order)
     cards = Cards(a)
@@ -138,12 +116,6 @@ def load_strat(a, url):  # line):
         )
         a["SD"] = a["WR"] | a["OESD"] | a["GS"]
 
-    # for i in range(2, 15):
-    #     a[str(card_values_inv[i])] = exact_cards(cards, i)
-    #     a[str(card_values_inv[i]) + str(card_values_inv[i])] = exact_cards(
-    #         cards, i, 2
-    #     )
-
     a.drop(
         [
             c
@@ -153,6 +125,5 @@ def load_strat(a, url):  # line):
         axis=1,
         inplace=True,
     )
-    # qw(time() - start)
 
     return a, actions

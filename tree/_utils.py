@@ -3,8 +3,6 @@ from omaha._static import poslist
 
 
 def convert_action_name(action, line):
-    # if line == "":
-    #     return ""
     if action == "C":
         if line == "" or line[-1] == "C":
             return "CHECK"
