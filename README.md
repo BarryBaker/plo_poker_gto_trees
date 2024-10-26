@@ -1,6 +1,4 @@
-# plo_poker_gto_trees
-
-AI Tree for Pot Limit Omaha GTO Solutions
+# AI Tree for Pot Limit Omaha GTO Solutions
 
 Overview
 

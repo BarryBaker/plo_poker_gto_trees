@@ -1,25 +1,24 @@
 import numpy as np
 import pandas as pd
 
-from icecream import ic as qw
 
-from omaha._cards import Board
+# from omaha._cards import Board
 
-from .load_strat import get_board_from_link, get_pot_from_link
+# from .load_strat import get_board_from_link, get_pot_from_link
 from ._utils import split_lines_tostreets
 
 
-class Url:
-    def __init__(self, url: str) -> None:
-        self.url = url
+# class Url:
+#     def __init__(self, url: str) -> None:
+#         self.url = url
 
-    @property
-    def board(self):
-        return Board(get_board_from_link(self.url))
+#     @property
+#     def board(self):
+#         return Board(get_board_from_link(self.url))
 
-    @property
-    def pot(self):
-        return get_pot_from_link(self.url)
+#     @property
+#     def pot(self):
+#         return get_pot_from_link(self.url)
 
 
 class Line:

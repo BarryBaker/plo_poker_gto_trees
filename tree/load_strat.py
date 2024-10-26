@@ -1,11 +1,9 @@
 import numpy as np
+import pandas as pd
 import pickle
 import glob
 import os
 
-from time import time
-from icecream import ic as qw
-from tqdm import tqdm
 
 from omaha._static import actions_order, card_values_inv
 from omaha._cards import Cards, Board
@@ -16,52 +14,48 @@ from omaha.flush import fn as flush
 
 # from omaha.ranks import exact_cards
 
-gto_path = "/{PATH TO SOLVED GTO FILES}/"
+
+# def get_board_from_link(link: str):
+#     return link.replace(gto_path, "").split("_")[-1].replace(".obj", "")
 
 
-def get_board_from_link(link: str):
-    return link.replace(gto_path, "").split("_")[-1].replace(".obj", "")
+# def get_pot_from_link(link: str):
+#     return link.replace(gto_path, "").split("_")[-2]
 
 
-def get_pot_from_link(link: str):
-    return link.replace(gto_path, "").split("_")[-2]
+# def get_boards(filters):
+#     files = [
+#         glob.glob(f"{gto_path}100_{poss}_{pot}*.obj")
+#         for poss in filters["poss"]
+#         for pot in filters["pot"]
+#     ]
+
+#     def board_filter(b: Board):
+#         return (
+#             not b.is_flush
+#             and not b.is_str8
+#             # and not b.is_paired
+#             and not b.is_suited
+#             and len(b.cards) == 4
+#         )
+
+#     boards = [
+#         j
+#         for i in files
+#         for j in i
+#         if len(Board(get_board_from_link(j)).cards) == 4
+#         # if get_board_from_link(j) == "7s7d2d5c"
+#         # if board_filter(Board(get_board_from_link(j)))
+#     ]
+#     # print(len(boards))
+#     return boards
 
 
-def get_boards(filters):
-    files = [
-        glob.glob(f"{gto_path}100_{poss}_{pot}*.obj")
-        for poss in filters["poss"]
-        for pot in filters["pot"]
-    ]
-
-    def board_filter(b: Board):
-        return (
-            not b.is_flush
-            and not b.is_str8
-            # and not b.is_paired
-            and not b.is_suited
-            and len(b.cards) == 4
-        )
-
-    boards = [
-        j
-        for i in files
-        for j in i
-        if len(Board(get_board_from_link(j)).cards) == 4
-        # if get_board_from_link(j) == "7s7d2d5c"
-        # if board_filter(Board(get_board_from_link(j)))
-    ]
-    # print(len(boards))
-    return boards
-
-
-def load_strat(a, url):
+def load_strat(a, board):
 
     actions = sorted(list(a.columns), key=actions_order)
     cards = Cards(a)
-    board = Board(get_board_from_link(url))
-
-    # start = time()
+    board = Board(board)
 
     for f in flush:
         a[f] = flush[f](cards, board)

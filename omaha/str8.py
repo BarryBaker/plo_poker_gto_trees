@@ -1,7 +1,7 @@
 # from tree.cards import Cards
 import numpy as np
 import pandas as pd
-from icecream import ic as qw
+
 from itertools import combinations
 
 # from ._static import card_values

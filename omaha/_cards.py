@@ -9,7 +9,6 @@ from ._static import (
     card_values_inv,
     suit_values_inv,
 )
-from icecream import ic as qw
 
 
 class Cards:
@@ -215,7 +214,7 @@ class Board:
                 if outs > 0:
                     nut = max(makes_high_str8_with) == 0
                     result[cardc] = (outs, nut)
-        # qw(result)
+
         return result
 
     @property

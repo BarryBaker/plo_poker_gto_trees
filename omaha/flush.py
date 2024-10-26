@@ -1,6 +1,6 @@
 # from tree.cards import Cards
 import numpy as np
-from icecream import ic as qw
+
 from itertools import combinations
 
 from ._cards import Board, Cards
@@ -85,12 +85,8 @@ def fd_h(level):
                     [
                         np.any(
                             [
-                                f1_card(
-                                    cards.cards, (remaining[suit][0], suit)
-                                ),
-                                f1_card(
-                                    cards.cards, (remaining[suit][1], suit)
-                                ),
+                                f1_card(cards.cards, (remaining[suit][0], suit)),
+                                f1_card(cards.cards, (remaining[suit][1], suit)),
                             ][:level],
                             axis=0,
                         ),
@@ -162,10 +158,7 @@ def fb(cards: Cards, board: Board):
         return cards.empty
 
     return np.any(
-        [
-            np.all([f1(suits, suit), ~f2(suits, suit)], axis=0)
-            for suit in fb
-        ],
+        [np.all([f1(suits, suit), ~f2(suits, suit)], axis=0) for suit in fb],
         axis=0,
     )
 
@@ -198,36 +191,28 @@ def fb_h(level):
                     [
                         np.all(
                             [
-                                f1_card(
-                                    cards.cards, (remaining[suit][0], suit)
-                                ),
+                                f1_card(cards.cards, (remaining[suit][0], suit)),
                                 ~f2(suits, suit),
                             ],
                             axis=0,
                         ),
                         np.all(
                             [
-                                f1_card(
-                                    cards.cards, (remaining[suit][1], suit)
-                                ),
+                                f1_card(cards.cards, (remaining[suit][1], suit)),
                                 ~f2(suits, suit),
                             ],
                             axis=0,
                         ),
                         np.all(
                             [
-                                f1_card(
-                                    cards.cards, (remaining[suit][2], suit)
-                                ),
+                                f1_card(cards.cards, (remaining[suit][2], suit)),
                                 ~f2(suits, suit),
                             ],
                             axis=0,
                         ),
                         np.all(
                             [
-                                f1_card(
-                                    cards.cards, (remaining[suit][3], suit)
-                                ),
+                                f1_card(cards.cards, (remaining[suit][3], suit)),
                                 ~f2(suits, suit),
                             ],
                             axis=0,

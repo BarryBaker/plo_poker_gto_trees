@@ -1,6 +1,6 @@
 # from tree.cards import Cards
 import numpy as np
-from icecream import ic as qw
+
 from itertools import combinations
 
 from ._cards import Board, Cards

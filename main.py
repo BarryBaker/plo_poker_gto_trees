@@ -1,396 +1,308 @@
 import pandas as pd
 import numpy as np
-import pickle
+import json
 
+import sys
+import os
 import multiprocessing
 from scipy.stats import pointbiserialr
-
+import warnings
 from collections import Counter
 from functools import reduce
 
 from itertools import combinations, product
-from time import time
-from icecream import ic as qw
-from tqdm import tqdm
 
 
-from tree.load_strat import load_strat, get_boards, gto_path, get_board_from_link
+from tree.load_strat import load_strat
 from tree.prun_tree import pruin_tree
-from tree.url import Url, Line
+from tree.url import Line
 from tree.skeleton import skeleton
-from tree._utils import get_result, convert_action_name, detect_hero
+from tree._utils import get_result
+from utils import merge_csvs
 
 from omaha._static import card_values, poslist
 from omaha._cards import Board
 
 
-def main(result_list, boards: list):
-    for url in tqdm(boards):
-        with open(url, "rb") as f:
-            a = pickle.load(f)
+def main(*csvs):
 
-        board = Url(url).board
+    reference_parts = csvs[0].split("_")[:-1]  # All but the last part
 
-        for line in a:
-
-            is_attack = Line(line).is_attack
-            strat_actions = load_strat(
-                a[line],
-                url,
+    # Check that all files match the reference in all parts except the last
+    for file in csvs[1:]:
+        file_parts = file.split("_")[:-1]  # All but the last part
+        if file_parts != reference_parts:
+            raise ValueError(
+                f"File names do not match except for the last element: {file}"
             )
-            strat_full, actions = strat_actions
-            strat = strat_full.copy()
-            strat = strat[strat[actions].max(axis=1) > 0]
 
-            tree = {}
-            if len(actions) > 1:
+    board = reference_parts[-3]
+    line = reference_parts[-2]
+    pot = reference_parts[-4]
 
-                init_action = strat[actions].idxmax(axis=1).value_counts().idxmax()
-                strat["action"] = init_action
+    strat = merge_csvs(csvs)
 
-                def append_tree(hand_before, hand):
-                    keys = [i[0] for i in hand_before if i[1] == 1]
-                    if len(keys) == 0:
-                        tree[hand] = {}
-                    else:
-                        reduce(lambda x, y: x[y], [tree] + keys)[hand] = {}
+    is_attack = Line(line).is_attack
+    strat, actions = load_strat(
+        strat,
+        board,
+    )
 
-                def step(df: pd.DataFrame, hand_before):
-                    a = df.copy()
-                    weight = a.shape[0] / strat.shape[0]
+    strat = strat[strat[actions].max(axis=1) > 0]
 
-                    a.drop(
-                        [
-                            c
-                            for c in [
-                                i for i in a.columns if i not in actions + ["action"]
-                            ]
-                            if (np.all(a[c]) or np.all(~a[c]))
-                        ],
-                        axis=1,
-                        inplace=True,
-                    )
+    tree = {}
+    if len(actions) > 1:
 
-                    current_action = np.unique(a["action"])
-                    if len(current_action) > 1:
-                        raise Exception("Multiple action options in iterate step")
-                    current_action = current_action[0]
-                    other_actions = [j for j in actions if j != current_action]
+        init_action = strat[actions].idxmax(axis=1).value_counts().idxmax()
+        strat["action"] = init_action
 
-                    for i in other_actions:
-                        a[f"{i}_gain"] = a[i] - a[current_action]
+        def append_tree(hand_before, hand):
+            # print(hand_before, hand)
+            keys = [i[0] for i in hand_before if i[1] == 1]
+            if len(keys) == 0:
+                tree[hand] = {}
+            else:
+                reduce(lambda x, y: x[y], [tree] + keys)[hand] = {}
 
-                    hands = [
-                        i
-                        for i in a.columns
-                        if i
-                        not in [*actions, "action"] + [f"{j}_gain" for j in actions]
-                    ]
+        def step(df: pd.DataFrame, hand_before):
+            a = df.copy()
+            weight = a.shape[0] / strat.shape[0]
 
-                    def iter_step(col_cnt):
-                        result = []
-                        for hand in combinations(hands, col_cnt):
-                            for action in other_actions:
-                                try:
-                                    corr_coefficient, p_value = pointbiserialr(
-                                        a[hand[0]], a[f"{action}_gain"]
-                                    )
-                                    result.append((hand[0], action, corr_coefficient))
-                                except Exception as e:
-                                    continue
+            a.drop(
+                [
+                    c
+                    for c in [i for i in a.columns if i not in actions + ["action"]]
+                    if (np.all(a[c]) or np.all(~a[c]))
+                ],
+                axis=1,
+                inplace=True,
+            )
+            current_action = np.unique(a["action"])
 
-                        return result
+            if len(current_action) > 1:
+                raise Exception("Multiple action options in iterate step")
 
-                    result = iter_step(1)
+            current_action = current_action[0]
+            other_actions = [j for j in actions if j != current_action]
 
-                    if len(result) == 0:
-                        return
-                    result = sorted(result, key=lambda x: abs(x[2]), reverse=True)
+            for i in other_actions:
+                a[f"{i}_gain"] = a[i] - a[current_action]
 
-                    result_filtered = skeleton(
-                        board,
-                        hand_before,
-                        result,
-                        is_attack,
-                        strat.columns,
-                        Url(url).pot,
-                    )
-                    if result_filtered and len(result_filtered) > 0:
+            hands = [
+                i
+                for i in a.columns
+                if i not in [*actions, "action"] + [f"{j}_gain" for j in actions]
+            ]
 
-                        result = result_filtered
+            def iter_step(col_cnt):
+                result = []
+                for hand in combinations(hands, col_cnt):
+                    # print(hand)
+                    for action in other_actions:
+                        # print(a[hand[0]], a[f"{action}_gain"])
+                        try:
+                            with warnings.catch_warnings():
+                                # Raise all warnings as exceptions
+                                warnings.simplefilter("error")
+                                corr_coefficient, p_value = pointbiserialr(
+                                    a[hand[0]], a[f"{action}_gain"]
+                                )
+                                # print((hand[0], action, corr_coefficient))
+                                result.append((hand[0], action, corr_coefficient))
+                        except Warning as e:
+                            continue
 
-                    a_result = get_result(a, actions, line, False)
-                    a_result_sort = sorted(
-                        [(k, v) for k, v in a_result.items()],
-                        key=lambda x: x[1],
-                        reverse=True,
-                    )
+                return result
 
-                    best_cut = result[0]
+            result = iter_step(1)
+            if len(result) == 0:
+                return
+            result = sorted(result, key=lambda x: abs(x[2]), reverse=True)
 
-                    # bc_1_weight = a[a[best_cut[0]]].shape[0] / a.shape[0] * weight
-                    bc_1_result = get_result(a[a[best_cut[0]]], actions, line, False)
-                    bc_1_result_sort = sorted(
-                        [(k, v) for k, v in bc_1_result.items()],
-                        key=lambda x: x[1],
-                        reverse=True,
-                    )
+            result_filtered = skeleton(
+                Board(board),
+                hand_before,
+                result,
+                is_attack,
+                strat.columns,
+                pot,
+            )
+            if result_filtered and len(result_filtered) > 0:
 
-                    # bc_0_weight = a[~a[best_cut[0]]].shape[0] / a.shape[0] * weight
-                    bc_0_result = get_result(a[~a[best_cut[0]]], actions, line, False)
-                    bc_0_result_sort = sorted(
-                        [(k, v) for k, v in bc_0_result.items()],
-                        key=lambda x: x[1],
-                        reverse=True,
-                    )
+                result = result_filtered
 
-                    approved = not (bc_1_result_sort[0][0] == bc_0_result_sort[0][0])
+            best_cut = result[0]
 
-                    append_tree(
-                        hand_before, (best_cut[0], approved, weight * abs(best_cut[2]))
-                    )
+            bc_1_result = get_result(a[a[best_cut[0]]], actions, line, False)
+            bc_1_result_sort = sorted(
+                [(k, v) for k, v in bc_1_result.items()],
+                key=lambda x: x[1],
+                reverse=True,
+            )
 
-                    if best_cut[2] > 0:
-                        a.loc[a[best_cut[0]], "action"] = best_cut[1]
-                    else:
-                        a.loc[~a[best_cut[0]], "action"] = best_cut[1]
+            bc_0_result = get_result(a[~a[best_cut[0]]], actions, line, False)
+            bc_0_result_sort = sorted(
+                [(k, v) for k, v in bc_0_result.items()],
+                key=lambda x: x[1],
+                reverse=True,
+            )
 
-                    step(
-                        a[a[best_cut[0]]],
-                        hand_before
-                        + [((best_cut[0], approved, weight * abs(best_cut[2])), 1)],
-                    )
+            approved = not (bc_1_result_sort[0][0] == bc_0_result_sort[0][0])
 
-                    step(
-                        a[~a[best_cut[0]]],
-                        hand_before
-                        + [((best_cut[0], approved, weight * abs(best_cut[2])), 0)],
-                    )
-                    # return min_weight, min_action
+            append_tree(hand_before, (best_cut[0], approved, weight * abs(best_cut[2])))
 
-                step(strat, [])
+            if best_cut[2] > 0:
+                a.loc[a[best_cut[0]], "action"] = best_cut[1]
+            else:
+                a.loc[~a[best_cut[0]], "action"] = best_cut[1]
 
-            tree = pruin_tree(tree)
-            whole = strat.shape[0]
+            step(
+                a[a[best_cut[0]]],
+                hand_before + [((best_cut[0], approved, weight * abs(best_cut[2])), 1)],
+            )
 
-            def get_freqs(level: dict, a: pd.DataFrame):
-                keys = list(level.keys())
+            step(
+                a[~a[best_cut[0]]],
+                hand_before + [((best_cut[0], approved, weight * abs(best_cut[2])), 0)],
+            )
 
-                level["sub"] = level.copy()
+        step(strat, [])
 
-                # Rest, action, weight
-                none_of_keys = a[pd.DataFrame([a[j] == 0 for j in keys]).all(axis=0)]
-                level["rest"] = {}
-                level["rest"]["action"] = get_result(
-                    none_of_keys,
+    tree = pruin_tree(tree)
+
+    whole = strat.shape[0]
+
+    def get_freqs(level: dict, a: pd.DataFrame):
+        keys = list(level.keys())
+
+        level["sub"] = level.copy()
+
+        # Rest, action, weight
+        none_of_keys = a[pd.DataFrame([a[j] == 0 for j in keys]).all(axis=0)]
+        level["rest"] = {}
+        level["rest"]["action"] = get_result(
+            none_of_keys,
+            actions,
+            line,
+        )
+        level["rest"]["weight"] = none_of_keys.shape[0] / whole
+        level["action"] = get_result(a, actions, line)
+        level["weight"] = a.shape[0] / whole
+        # ---------
+        for key in keys:
+            del level[key]
+
+        if len(level["sub"][keys[0]]) == 0:
+            level["sub"][keys[0]]["action"] = get_result(
+                a[a[keys[0]] == 1], actions, line
+            )
+            level["sub"][keys[0]]["rest"] = {}
+            level["sub"][keys[0]]["sub"] = {}
+            level["sub"][keys[0]]["weight"] = a[a[keys[0]] == 1].shape[0] / whole
+        else:
+            get_freqs(level["sub"][keys[0]], a[a[keys[0]] == 1])
+
+        if len(keys) == 1:
+            return
+
+        for key in keys[1:]:
+            filter_keys = keys[: keys.index(key) + 1]
+
+            if len(level["sub"][filter_keys[-1]]) == 0:
+                level["sub"][filter_keys[-1]]["action"] = get_result(
+                    a[
+                        pd.DataFrame([a[j] == 0 for j in filter_keys[:-1]]).all(axis=0)
+                        & (a[filter_keys[-1]] == 1)
+                    ],
                     actions,
                     line,
                 )
-                level["rest"]["weight"] = none_of_keys.shape[0] / whole
-                level["action"] = get_result(a, actions, line)
-                level["weight"] = a.shape[0] / whole
-                # ---------
-                for key in keys:
-                    del level[key]
-
-                if len(level["sub"][keys[0]]) == 0:
-                    level["sub"][keys[0]]["action"] = get_result(
-                        a[a[keys[0]] == 1], actions, line
-                    )
-                    level["sub"][keys[0]]["rest"] = {}
-                    level["sub"][keys[0]]["sub"] = {}
-                    level["sub"][keys[0]]["weight"] = (
-                        a[a[keys[0]] == 1].shape[0] / whole
-                    )
-                else:
-                    get_freqs(level["sub"][keys[0]], a[a[keys[0]] == 1])
-
-                if len(keys) == 1:
-                    return
-
-                for key in keys[1:]:
-                    filter_keys = keys[: keys.index(key) + 1]
-
-                    if len(level["sub"][filter_keys[-1]]) == 0:
-                        level["sub"][filter_keys[-1]]["action"] = get_result(
-                            a[
-                                pd.DataFrame([a[j] == 0 for j in filter_keys[:-1]]).all(
-                                    axis=0
-                                )
-                                & (a[filter_keys[-1]] == 1)
-                            ],
-                            actions,
-                            line,
-                        )
-                        level["sub"][filter_keys[-1]]["rest"] = {}
-                        level["sub"][filter_keys[-1]]["sub"] = {}
-                        level["sub"][filter_keys[-1]]["weight"] = (
-                            a[
-                                pd.DataFrame([a[j] == 0 for j in filter_keys[:-1]]).all(
-                                    axis=0
-                                )
-                                & (a[filter_keys[-1]] == 1)
-                            ].shape[0]
-                            / whole
-                        )
-                    else:
-                        get_freqs(
-                            level["sub"][filter_keys[-1]],
-                            a[
-                                pd.DataFrame([a[j] == 0 for j in filter_keys[:-1]]).all(
-                                    axis=0
-                                )
-                                & (a[filter_keys[-1]] == 1)
-                            ],
-                        )
-
-            if len(tree) > 0:
-                get_freqs(tree, strat)
-
-            base_action = get_result(strat, actions, line)
-
-            if len(tree) > 0:
-                del tree["action"]
-                del tree["weight"]
-
-                final_tree = {
-                    "ROOT": tree,
-                    "base_action": base_action,
-                    "hide": False,
-                }
-
+                level["sub"][filter_keys[-1]]["rest"] = {}
+                level["sub"][filter_keys[-1]]["sub"] = {}
+                level["sub"][filter_keys[-1]]["weight"] = (
+                    a[
+                        pd.DataFrame([a[j] == 0 for j in filter_keys[:-1]]).all(axis=0)
+                        & (a[filter_keys[-1]] == 1)
+                    ].shape[0]
+                    / whole
+                )
             else:
-                final_tree = {
-                    "ROOT": {
-                        "rest": {},
-                        "sub": {},
-                    },
-                    "base_action": base_action,
-                    "hide": False,
-                }
+                get_freqs(
+                    level["sub"][filter_keys[-1]],
+                    a[
+                        pd.DataFrame([a[j] == 0 for j in filter_keys[:-1]]).all(axis=0)
+                        & (a[filter_keys[-1]] == 1)
+                    ],
+                )
 
-            situ = f"{url.replace(gto_path,'').replace('.obj','_')}{line}"
-            situ = situ.split("_")
+    if len(tree) > 0:
+        get_freqs(tree, strat)
 
-            if len(situ) == 6:
-                result = {
-                    "stack": situ[0],
-                    "poss": f"{situ[1]}_{situ[2]}",
-                    "pot": situ[3],
-                    "board": situ[4],
-                    "line": situ[5],
-                    "tree": final_tree,
-                    "layer": "flop" if len(situ[4]) == 6 else "turn",
-                    "hero": detect_hero(f"{situ[1]}_{situ[2]}", situ[5]),
-                }
+    base_action = get_result(strat, actions, line)
 
-            if len(situ) == 7:
-                result = {
-                    "stack": situ[0],
-                    "poss": f"{situ[1]}_{situ[2]}_{situ[3]}",
-                    "pot": situ[4],
-                    "board": situ[5],
-                    "line": situ[6],
-                    "tree": final_tree,
-                    "layer": "flop" if len(situ[5]) == 6 else "turn",
-                    "hero": detect_hero(f"{situ[1]}_{situ[2]}_{situ[3]}", situ[6]),
-                }
+    if len(tree) > 0:
+        del tree["action"]
+        del tree["weight"]
 
-            result_list.append(result)
+        final_tree = {
+            "ROOT": tree,
+            "base_action": base_action,
+            "hide": False,
+        }
+
+    else:
+        final_tree = {
+            "ROOT": {
+                "rest": {},
+                "sub": {},
+            },
+            "base_action": base_action,
+            "hide": False,
+        }
+
+    return final_tree
 
 
-for p in [
-    ("BTN_BB", "SRP"),
-    ("MP_BB", "SRP"),
-    ("SB_BB", "SRP"),
-    ("CO_BTN", "SRP"),
-    ("EP_BTN", "SRP"),
-    ("SB_BB", "3BP"),
-    ("CO_BTN", "3BP"),
-    ("EP_CO", "3BP"),
-    ("BTN_SB", "3BP"),
-    ("CO_SB", "3BP"),
-    ("MP_SB", "3BP"),
-]:
-    filters = {
-        "poss": [
-            p[0],
-        ],
-        "pot": [p[1]],
-    }
-    all_urls = get_boards(filters)
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        a = "PLO500_100_6_BTN_BB_SRP_Ks7d5d_C_BTN_CHECK.csv"
+        b = "PLO500_100_6_BTN_BB_SRP_Ks7d5d_C_BTN_RAISE75.csv"
 
-    """----------------"""
-    num_chunks = 9
-    avg_chunk_size = len(all_urls) // num_chunks
-    remainder = len(all_urls) % num_chunks
+    else:
+        a = sys.argv[1]
+        b = sys.argv[2]
 
-    chunks = []
-    start = 0
-    for i in range(num_chunks):
-        end = start + avg_chunk_size + (1 if i < remainder else 0)
-        chunks.append(all_urls[start:end])
-        start = end
-    """----------------"""
+    result = main(a, b)
 
-    if __name__ == "__main__":
-        manager = multiprocessing.Manager()
-        shared_list = manager.list()
-        processes = []
-        if len(chunks) <= 9:
-            for i in chunks:
-                process = multiprocessing.Process(target=main, args=(shared_list, i))
-                process.start()
-                processes.append(process)
+    def clean_dict(data):
+        # Recursively process the dictionary
+        if isinstance(data, dict):
+            cleaned_data = {}
+            for k, v in data.items():
 
-            for process in processes:
-                process.join()
+                if k == "hide":
+                    continue
+                if isinstance(v, dict) and v:  # Process non-empty dictionaries
+                    # Special handling for 'sub' key: elevate its contents one level higher
+                    if k == "sub":
+                        cleaned_sub_dict = clean_dict(v)  # Clean the 'sub' dictionary
+                        for sub_k, sub_v in cleaned_sub_dict.items():
+                            cleaned_data[sub_k] = sub_v
+                    else:
+                        cleaned_sub_dict = clean_dict(v)
+                        if cleaned_sub_dict:  # Only keep non-empty results
+                            cleaned_data[k] = cleaned_sub_dict
+                elif isinstance(v, dict):  # Skip empty dictionaries
+                    continue
+                elif k == "weight" and isinstance(
+                    v, (int, float)
+                ):  # Convert weight to percentage
+                    cleaned_data[k] = f"{v * 100:.2f}%"
+                else:
+                    cleaned_data[k] = v
+            return cleaned_data
+        return data
 
-            result = list(shared_list)
+    cleaned_data = clean_dict(result)
 
-            result = sorted(
-                result, key=lambda x: card_values[x["board"][6]], reverse=True
-            )
-            result = sorted(
-                result, key=lambda x: card_values[x["board"][4]], reverse=True
-            )
-            result = sorted(
-                result, key=lambda x: card_values[x["board"][2]], reverse=True
-            )
-            result = sorted(
-                result, key=lambda x: card_values[x["board"][0]], reverse=True
-            )
-
-            grouped_result = {}
-
-            for type in [
-                [False, False, False, False],
-                [False, False, True, False],
-                [True, False, False, False],
-                [True, False, True, False],
-                [False, True, False, False],
-                [False, True, True, False],
-                [False, False, False, True],
-            ]:
-                for hero in poslist:
-                    filename = None
-                    for i in result:
-                        if i["hero"] == hero and (
-                            (
-                                type[3]
-                                and (len(Board(i["board"][:6]).flush) > 0) == type[3]
-                            )
-                            or (
-                                not type[3]
-                                and Board(i["board"][:6]).is_paired == type[0]
-                                and (len(Board(i["board"][:6]).str8) > 0) == type[1]
-                                and (len(Board(i["board"][:6]).fd) > 0) == type[2]
-                                and (len(Board(i["board"][:6]).flush) == 0)
-                            )
-                        ):
-                            filename = f"100_{filters['poss'][0]}_{filters['pot'][0]}_{type[0]}_{type[1]}_{type[2]}_{type[3]}_turn_{hero}"
-
-                            if filename in grouped_result:
-                                grouped_result[filename].append(i)
-                            else:
-                                grouped_result[filename] = [i]
+    print("Resulting directory:", json.dumps(cleaned_data, indent=4))

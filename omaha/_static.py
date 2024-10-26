@@ -23,14 +23,13 @@ suit_values_inv = {v: k for k, v in suit_values.items()}
 
 
 def actions_order(action):
-    if action == "F":
+    if action[0] == "F":
         return 0
-    if action == "C":
+    if action[0] == "C":
         return 1
-    if action == "MIN":
+    if action[0] == "M":
         return 2
-    if action == "MR":
-        return 3
-    if action == "A":
+
+    if action[0] == "A":
         return 100
-    return int(action[1:])
+    return int(action.replace("RAISE", ""))

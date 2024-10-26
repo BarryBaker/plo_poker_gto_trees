@@ -18,7 +18,7 @@ def convert_action_name(action, line):
     }[action]
 
 
-def get_result(a: pd.DataFrame, actions, line, convert=True):
+def get_result(a: pd.DataFrame, actions, line, convert=False):
     result = {i: a[i].sum() for i in actions}
     all_sum = sum([result[i] for i in result])
 
