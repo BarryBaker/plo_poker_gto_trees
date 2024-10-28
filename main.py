@@ -99,7 +99,8 @@ def main(*csvs):
                 for hand in combinations(hands, col_cnt):
                     # print(hand)
                     for action in other_actions:
-                        # print(a[hand[0]], a[f"{action}_gain"])
+                        if a.shape[0] < 3:
+                            continue
                         try:
                             with warnings.catch_warnings():
                                 # Raise all warnings as exceptions
@@ -265,14 +266,15 @@ def main(*csvs):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        a = "PLO500_100_6_BTN_BB_SRP_Ks7d5d_C_BTN_CHECK.csv"
-        b = "PLO500_100_6_BTN_BB_SRP_Ks7d5d_C_BTN_RAISE75.csv"
+        file_paths = [
+            "PLO500_100_6_BTN_BB_SRP_Ks7d5d_C_BTN_CHECK.csv",
+            "PLO500_100_6_BTN_BB_SRP_Ks7d5d_C_BTN_RAISE75.csv",
+        ]
 
     else:
-        a = sys.argv[1]
-        b = sys.argv[2]
+        file_paths = sys.argv[1:]
 
-    result = main(a, b)
+    result = main(*file_paths)
 
     def clean_dict(data):
         # Recursively process the dictionary
