@@ -3,11 +3,9 @@ import numpy as np
 import json
 
 import sys
-import os
-import multiprocessing
 from scipy.stats import pointbiserialr
 import warnings
-from collections import Counter
+
 from functools import reduce
 
 from itertools import combinations, product
@@ -57,7 +55,6 @@ def main(*csvs):
         strat["action"] = init_action
 
         def append_tree(hand_before, hand):
-            # print(hand_before, hand)
             keys = [i[0] for i in hand_before if i[1] == 1]
             if len(keys) == 0:
                 tree[hand] = {}

@@ -12,44 +12,6 @@ from omaha.made import fn as made
 from omaha.str8 import fn as str8
 from omaha.flush import fn as flush
 
-# from omaha.ranks import exact_cards
-
-
-# def get_board_from_link(link: str):
-#     return link.replace(gto_path, "").split("_")[-1].replace(".obj", "")
-
-
-# def get_pot_from_link(link: str):
-#     return link.replace(gto_path, "").split("_")[-2]
-
-
-# def get_boards(filters):
-#     files = [
-#         glob.glob(f"{gto_path}100_{poss}_{pot}*.obj")
-#         for poss in filters["poss"]
-#         for pot in filters["pot"]
-#     ]
-
-#     def board_filter(b: Board):
-#         return (
-#             not b.is_flush
-#             and not b.is_str8
-#             # and not b.is_paired
-#             and not b.is_suited
-#             and len(b.cards) == 4
-#         )
-
-#     boards = [
-#         j
-#         for i in files
-#         for j in i
-#         if len(Board(get_board_from_link(j)).cards) == 4
-#         # if get_board_from_link(j) == "7s7d2d5c"
-#         # if board_filter(Board(get_board_from_link(j)))
-#     ]
-#     # print(len(boards))
-#     return boards
-
 
 def load_strat(a, board):
 
