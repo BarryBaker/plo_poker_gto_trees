@@ -16,28 +16,14 @@ from tree.prun_tree import pruin_tree
 from tree.url import Line
 from tree.skeleton import skeleton
 from tree._utils import get_result
-from utils import merge_csvs
+from main_utils import merge_csvs, parse_csv_name
 
 from omaha._static import card_values, poslist
 from omaha._cards import Board
 
 
 def main(*csvs):
-
-    reference_parts = csvs[0].split("_")[:-1]  # All but the last part
-
-    # Check that all files match the reference in all parts except the last
-    for file in csvs[1:]:
-        file_parts = file.split("_")[:-1]  # All but the last part
-        if file_parts != reference_parts:
-            raise ValueError(
-                f"File names do not match except for the last element: {file}"
-            )
-
-    board = reference_parts[-3]
-    line = reference_parts[-2]
-    pot = reference_parts[-4]
-
+    board, line, pot = parse_csv_name(csvs)
     strat = merge_csvs(csvs)
 
     is_attack = Line(line).is_attack

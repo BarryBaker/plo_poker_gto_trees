@@ -3,6 +3,20 @@ import pandas as pd
 gto_path = "solved/"
 
 
+def parse_csv_name(csvs):
+    reference_parts = csvs[0].split("_")[:-1]  # All but the last part
+
+    # Check that all files match the reference in all parts except the last
+    for file in csvs[1:]:
+        file_parts = file.split("_")[:-1]  # All but the last part
+        if file_parts != reference_parts:
+            raise ValueError(
+                f"File names do not match except for the last element: {file}"
+            )
+
+    return reference_parts[-3], reference_parts[-2], reference_parts[-4]
+
+
 def merge_csvs(file_paths):
 
     # Initialize an empty list to store each CSV as a DataFrame
